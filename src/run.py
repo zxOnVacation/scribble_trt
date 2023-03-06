@@ -1,4 +1,4 @@
-from diffusers import StableDiffusionControlNetPipeline, ControlNetModel, UniPCMultistepScheduler, DPMSolverMultistepScheduler
+from diffusers import StableDiffusionControlNetPipeline, ControlNetModel, UniPCMultistepScheduler, DPMSolverMultistepScheduler, DDIMScheduler
 from diffusers.utils import load_image
 import numpy as np
 import torch
@@ -22,7 +22,8 @@ if __name__ == '__main__':
         controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-scribble", torch_dtype=torch.float32)
         pipe = StableDiffusionControlNetPipeline.from_pretrained("runwayml/stable-diffusion-v1-5", controlnet=controlnet, torch_dtype=torch.float32)
     # pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
-    pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+    # pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+    pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config)
     # controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-scribble")
     # pipe = StableDiffusionControlNetPipeline.from_pretrained("runwayml/stable-diffusion-v1-5", revision='fp16',controlnet=controlnet)
     # pipe = StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
@@ -37,7 +38,7 @@ if __name__ == '__main__':
                      guidance_scale=7.5,
                      height=512,
                      width=512,
-                     num_inference_steps=10
+                     num_inference_steps=100
         ).images[0]
         print('cost %s s' % str((time.time() - t) * 1000))
         image.save("generated-%s.png" % i)
