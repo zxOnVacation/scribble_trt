@@ -25,7 +25,8 @@ def clip(text_a, text_b):
     print(text_a)
     print(tokens_a)
     tokens_b = tokenize(text_b)
-    tokens = torch.cat([tokens_a, tokens_b]).to("torch.int32")
+    print(tokens_a.dtype)
+    tokens = torch.cat([tokens_a, tokens_b]).int()
     print(tokens.shape)
     tokens_inp = cuda.DeviceView(ptr=tokens.data_ptr(), shape=tokens.shape, dtype=np.int32)
     embeddings = engines['clip'].infer({"tokens": tokens_inp})['embeddings']
