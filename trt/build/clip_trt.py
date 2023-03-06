@@ -25,7 +25,7 @@ def format(weights):
 
 def ln_plugin(epsilon=1e-5, axis=-1):
     for creator in trt.get_plugin_registry().plugin_creator_list:
-        if creator.name == "LayerNormPlugin":
+        if creator.name == "LayerNorm":
             pLists = []
             pLists.append(trt.PluginField("epsilon", np.float32(epsilon), trt.PluginFieldType.FLOAT32))
             pLists.append(trt.PluginField("axis", np.int32(axis), trt.PluginFieldType.INT32))
