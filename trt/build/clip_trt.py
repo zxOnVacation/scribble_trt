@@ -134,6 +134,12 @@ def build_network(network, para, inputTensor):
     token_embedding = network.add_gather(out(total_token_embeddings), inputTensor, 0) # 2 77 768
     position_embeddings = network.add_constant((1, 77, 768), format(para['text_model.embeddings.position_embedding.weight'].reshape(1, 77, 768)))
     input_embedding = network.add_elementwise(out(token_embedding), out(position_embeddings), trt.ElementWiseOperation.SUM) # 2, 77, 768 embedding
+
+    out(input_embedding).name = 'embeddings'
+    network.mark_output(out(input_embedding))
+    return network
+
+
     q_scale = network.add_constant((1, 1, 1), format(np.array([0.125], dtype=np.float32)))
     masks = network.add_constant((1, 77, 77), format(gen_masks()))
     gelu_scale = network.add_constant((1, 1, 1), format(np.array([1.702], dtype=np.float32)))
@@ -141,9 +147,7 @@ def build_network(network, para, inputTensor):
     residual = input_embedding
     for i in range(1):
         ln_0 = ln(network, residual, para['text_model.encoder.layers.%s.layer_norm1.weight' % i], para['text_model.encoder.layers.%s.layer_norm1.bias' % i])
-        out(ln_0).name = 'embeddings'
-        network.mark_output(out(ln_0))
-        return network
+
 
 
         attn_out = attn(network, para, i, ln_0, q_scale, masks)
