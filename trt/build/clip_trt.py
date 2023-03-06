@@ -140,7 +140,7 @@ def build_network(network, para, inputTensor):
 
     residual = input_embedding
     for i in range(1):
-        ln_0 = ln(network, residual, para['text_model.encoder.layers.%s.layer_norm1.weight' % i], para['text_model.encoder.layers.%s.layer_norm1.bias' % i])
+        ln_0 = ln(network, residual, para['text_model.encoder.layers.%s.layer_norm1.bias' % i], para['text_model.encoder.layers.%s.layer_norm1.weight' % i])
         out(ln_0).name = 'embeddings'
         network.mark_output(out(ln_0))
         return network
