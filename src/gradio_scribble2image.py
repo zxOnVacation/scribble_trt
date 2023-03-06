@@ -1,7 +1,5 @@
 from share import *
 import config
-
-import cv2
 import einops
 import gradio as gr
 import numpy as np
@@ -75,24 +73,24 @@ def process(input_image, prompt, a_prompt, n_prompt, num_samples, image_resoluti
 
 
 if __name__ == '__main__':
-    img = process(
-        input_image=np.array(Image.open("./test_imgs/user_3.png")),
-        prompt="hot air balloon",
-        a_prompt="best quality, extremely detailed, sunset, beach",
-        n_prompt="longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
-        num_samples=1,
-        image_resolution=512,
-        ddim_steps=10,
-        guess_mode=False,
-        strength=1.0,
-        scale=9.0,
-        seed=9,
-        eta=0.0
-    )
-    print(len(img))
+    for i in range(15):
+        img = process(
+            input_image=np.array(Image.open("./test_imgs/user_3.png")),
+            prompt="hot air balloon",
+            a_prompt="best quality, extremely detailed, sunset, beach",
+            n_prompt="longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
+            num_samples=1,
+            image_resolution=512,
+            ddim_steps=50,
+            guess_mode=False,
+            strength=1.0,
+            scale=7.5,
+            seed=i+1337,
+            eta=0.0
+        )
 
-    img = Image.fromarray(img[1])
-    img.save("out.jpg")
+        img = Image.fromarray(img[1])
+        img.save("ori_%s.jpg" % i)
 
 
 
