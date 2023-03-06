@@ -6,7 +6,6 @@ __pycache__/
 # C extensions
 *.so
 
-src/models
 src/models/control_sd15_scribble.pth
 src/github_page
 src/font
