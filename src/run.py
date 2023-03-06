@@ -1,10 +1,8 @@
 from diffusers import StableDiffusionControlNetPipeline, ControlNetModel, UniPCMultistepScheduler
-from diffusers import StableDiffusionPipeline
 from diffusers.utils import load_image
 import numpy as np
 import torch
 import time
-import cv2
 from PIL import Image
 
 
