@@ -36,7 +36,7 @@ def ln_plugin(epsilon=1e-5, axis=-1):
 def ln(network, inputs, gamma_weights, beta_weights):
     gamma_cons = network.add_constant(gamma_weights.shape, format(gamma_weights))
     beta_cons = network.add_constant(beta_weights.shape, format(beta_weights))
-    ln_out = network.add_plugin_v2([out(inputs), out(gamma_cons), out(beta_cons)], ln_plugin(axis=0))
+    ln_out = network.add_plugin_v2([out(inputs), out(gamma_cons), out(beta_cons)], ln_plugin(axis=1))
     return ln_out
 
 
