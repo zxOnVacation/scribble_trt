@@ -22,6 +22,8 @@ def pre_img(img_path):
 
 def clip(text_a, text_b):
     tokens_a = tokenize(text_a)
+    print(text_a)
+    print(tokens_a)
     tokens_b = tokenize(text_b)
     tokens = torch.cat([tokens_a, tokens_b])
     print(tokens.shape)
