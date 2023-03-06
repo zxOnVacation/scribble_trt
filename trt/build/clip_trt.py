@@ -36,7 +36,7 @@ def ln_plugin(epsilon=1e-5, axis=-1):
 def ln(network, inputs, gamma_weights, beta_weights):
     gamma_cons = network.add_constant(gamma_weights.shape, format(gamma_weights))
     beta_cons = network.add_constant(beta_weights.shape, format(beta_weights))
-    ln_out = network.add_plugin_v2([out(inputs), out(gamma_cons), out(beta_cons)], ln_plugin())
+    ln_out = network.add_plugin_v2([out(inputs), out(gamma_cons), out(beta_cons)], ln_plugin(axis=0))
     return ln_out
 
 
@@ -140,7 +140,7 @@ def build_network(network, para, inputTensor):
 
     residual = input_embedding
     for i in range(1):
-        ln_0 = ln(network, residual, para['text_model.encoder.layers.%s.layer_norm1.bias' % i], para['text_model.encoder.layers.%s.layer_norm1.weight' % i])
+        ln_0 = ln(network, residual, para['text_model.encoder.layers.%s.layer_norm1.weight' % i], para['text_model.encoder.layers.%s.layer_norm1.bias' % i])
         out(ln_0).name = 'embeddings'
         network.mark_output(out(ln_0))
         return network
