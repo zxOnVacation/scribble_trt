@@ -14,18 +14,20 @@ if __name__ == '__main__':
     image = load_image("https://github.com/lllyasviel/ControlNet/raw/main/test_imgs/user_3.png")
     # image = np.array(image)
 
-    # load control net and stable diffusion v1-5
-    controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-scribble", torch_dtype=torch.float16)
-    pipe = StableDiffusionControlNetPipeline.from_pretrained("runwayml/stable-diffusion-v1-5", controlnet=controlnet, torch_dtype=torch.float16)
+    if torch.cuda.is_available():
+        controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-scribble", torch_dtype=torch.float16)
+        pipe = StableDiffusionControlNetPipeline.from_pretrained("runwayml/stable-diffusion-v1-5", controlnet=controlnet, torch_dtype=torch.float16, revision='f16')
+        pipe.enable_xformers_memory_efficient_attention()
+        # pipe.enable_model_cpu_offload()
+    else:
+        controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-scribble", torch_dtype=torch.float32)
+        pipe = StableDiffusionControlNetPipeline.from_pretrained("runwayml/stable-diffusion-v1-5", controlnet=controlnet, torch_dtype=torch.float32)
+    pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
     # controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-scribble")
     # pipe = StableDiffusionControlNetPipeline.from_pretrained("runwayml/stable-diffusion-v1-5", revision='fp16',controlnet=controlnet)
     # pipe = StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
     # speed up diffusion process with faster scheduler and memory optimization
-    pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
-    # remove following line if xformers is not installed
-    # pipe.enable_xformers_memory_efficient_attention()
-    #
-    # pipe.enable_model_cpu_offload()
+
 
     for i in range(30):
         t = time.time()
@@ -35,8 +37,8 @@ if __name__ == '__main__':
                      guidance_scale=9.0,
                      height=512,
                      width=512,
-                     num_inference_steps=1
+                     num_inference_steps=20
         ).images[0]
-        image.save("generated-%s.png" % i)
         print('cost %s s' % str((time.time() - t) * 1000))
+        image.save("generated-%s.png" % i)
 
