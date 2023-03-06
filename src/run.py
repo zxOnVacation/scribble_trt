@@ -21,8 +21,8 @@ if __name__ == '__main__':
     else:
         controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-scribble", torch_dtype=torch.float32)
         pipe = StableDiffusionControlNetPipeline.from_pretrained("runwayml/stable-diffusion-v1-5", controlnet=controlnet, torch_dtype=torch.float32)
-    pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
-    # pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+    # pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
+    pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
     # controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-scribble")
     # pipe = StableDiffusionControlNetPipeline.from_pretrained("runwayml/stable-diffusion-v1-5", revision='fp16',controlnet=controlnet)
     # pipe = StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     for i in range(30):
         t = time.time()
-        image = pipe(prompt="(hot air balloon:2.0), on the beach, sunset, best quality, extremely detailed",
+        image = pipe(prompt="(hot air balloon:2.0), (on the beach:0.5), (sunset:0.5), best quality, extremely detailed",
                      negative_prompt="longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
                      image=image,
                      guidance_scale=7.5,
