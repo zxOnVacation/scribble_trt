@@ -1,6 +1,6 @@
 from PIL import Image
 import numpy as np
-from .utils import *
+from utils import *
 import torch
 import einops
 import random
@@ -30,7 +30,7 @@ def clip(text_a, text_b):
 
 
 def load_engines():
-    clip_engine = Engine("./build/engine/clip.engine")
+    clip_engine = Engine("./build/engine/clip.plan")
     clip_engine.activate()
     clip_engine.allocate_buffers()
 
