@@ -29,9 +29,9 @@ if __name__ == '__main__':
     # speed up diffusion process with faster scheduler and memory optimization
 
 
-    for i in range(30):
+    for i in range(15):
         t = time.time()
-        image = pipe(prompt="(hot air balloon:2.0), (on the beach:0.5), (sunset:0.5), best quality, extremely detailed",
+        image = pipe(prompt="(hot air balloon:2.0), best quality, extremely detailed",
                      negative_prompt="longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
                      image=image,
                      guidance_scale=7.5,
