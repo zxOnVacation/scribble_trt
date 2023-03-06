@@ -73,7 +73,9 @@ def process(input_image, prompt, a_prompt, n_prompt, num_samples, image_resoluti
 
 
 if __name__ == '__main__':
+    import time
     for i in range(15):
+        t = time.time()
         img = process(
             input_image=np.array(Image.open("./test_imgs/user_3.png")),
             prompt="hot air balloon",
@@ -88,7 +90,7 @@ if __name__ == '__main__':
             seed=i+1337,
             eta=0.0
         )
-
+        print('cost %s s' % str((time.time() - t) * 1000))
         img = Image.fromarray(img[1])
         img.save("ori_%s.jpg" % i)
 
