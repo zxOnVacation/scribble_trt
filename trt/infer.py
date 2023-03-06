@@ -21,8 +21,20 @@ def pre_img(img_path):
     return control
 
 def clip(text_a, text_b):
-    pass
+    tokens_a = tokenize(text_a)
+    tokens_b = tokenize(text_b)
+    tokens = torch.cat([tokens_a, tokens_b])
+    tokens_inp = cuda.DeviceView(ptr=tokens.data_ptr(), shape=tokens.shape, dtype=np.int32)
+    embeddings = engines['clip'].infer({"tokens": tokens_inp})['embeddings']
+    print(embeddings)
 
+
+def load_engines():
+    clip_engine = Engine("./build/engine/clip.engine")
+    clip_engine.activate()
+    clip_engine.allocate_buffers()
+
+    return {"clip": clip_engine}
 
 
 
@@ -31,6 +43,8 @@ if __name__ == '__main__':
     c_img_path = '../src/test_imgs/user_3.png'
     prompt = "hot air balloon, best quality, extremely detailed, sunset, beach"
     neg_prompt = "longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality"
+    engines = load_engines()
+
     c_img = pre_img(c_img_path)
     seed = 9
     if seed == -1:
