@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     if torch.cuda.is_available():
         controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-scribble", torch_dtype=torch.float16)
-        pipe = StableDiffusionControlNetPipeline.from_pretrained("runwayml/stable-diffusion-v1-5", controlnet=controlnet, torch_dtype=torch.float16, revision='f16')
+        pipe = StableDiffusionControlNetPipeline.from_pretrained("runwayml/stable-diffusion-v1-5", controlnet=controlnet, torch_dtype=torch.float16, revision='fp16')
         pipe.enable_xformers_memory_efficient_attention()
         # pipe.enable_model_cpu_offload()
     else:
