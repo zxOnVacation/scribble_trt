@@ -84,6 +84,7 @@ def qkv_cal(network, para, i, input_layer):
 
 def attn(network, para, i, input_layer, q_scale, masks):
     qkv_mat = qkv_cal(network, para, i, input_layer)
+    return qkv_mat
     q_proj = network.add_slice(out(qkv_mat), (0, 0, 0), (1, 77, 768), (1, 1, 1))
     k_proj = network.add_slice(out(qkv_mat), (1, 0, 0), (1, 77, 768), (1, 1, 1))
     v_proj = network.add_slice(out(qkv_mat), (2, 0, 0), (1, 77, 768), (1, 1, 1))
