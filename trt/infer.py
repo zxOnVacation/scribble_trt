@@ -7,6 +7,21 @@ import random
 from pytorch_lightning import seed_everything
 
 
+def control(embeddings):
+    input_data = np.load('./build/weights/control_input.npz')
+    noise = torch.from_numpy(input_data['noise']).to(dtype='torch.float32', device='cuda') # 1 4 64 64
+    hint = torch.from_numpy(input_data['hint']).to(dtype='torch.float32', device='cuda') # 1 3 512 512
+    t = torch.from_numpy(input_data['t']).to(dtype='torch.int32', device='cuda') # 1
+    # context = torch.from_numpy(input_data['context']).to(dtype='torch.float32', device='cuda') # 2 77 768
+    context = embeddings
+    noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
+    hint_inp = cuda.DeviceView(ptr=hint.data_ptr(), shape=hint.shape, dtype=np.float32)
+    t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.int32)
+    context_inp = cuda.DeviceView(ptr=context.data_ptr(), shape=context.shape, dtype=np.float32)
+    dbrs_1 = engines['control'].infer({'noise': noise_inp, 'hint': hint_inp, 't': t_inp, 'context': context_inp})['dbrs_1']
+    print(dbrs_1)
+
+
 
 
 def pre_img(img_path):
@@ -26,15 +41,19 @@ def clip(text_a, text_b):
     tokens = torch.cat([tokens_a, tokens_b]).int() # 牢记要转成int32 好难过
     tokens_inp = cuda.DeviceView(ptr=tokens.data_ptr(), shape=tokens.shape, dtype=np.int32)
     embeddings = engines['clip'].infer({"tokens": tokens_inp})['embeddings']
-    print(embeddings)
+    return embeddings # 2 77 768
 
 
 def load_engines():
     clip_engine = Engine("./build/engine/clip.plan")
     clip_engine.activate()
     clip_engine.allocate_buffers({'tokens': (2, 77), 'embeddings': (2, 77, 768)})
+    control_engine = Engine("./build/engine/control.plan")
+    control_engine.activate()
+    control_engine.allocate_buffers({'noise': (1, 4, 64, 64), 'hint': (1, 3, 512, 512), 't': (1,), 'context': (2, 77, 768),
+                                     'dbrs_0': (1, 320, 64, 64), 'dbrs_1': (1, 320, 64, 64)})
 
-    return {"clip": clip_engine}
+    return {"clip": clip_engine, "control": control_engine}
 
 
 
@@ -51,4 +70,6 @@ if __name__ == '__main__':
         seed = random.randint(0, 65535)
     seed_everything(seed)
 
-    clip(prompt, neg_prompt)
+    embeddings = clip(prompt, neg_prompt)
+
+    control(embeddings)
