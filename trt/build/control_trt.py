@@ -148,6 +148,7 @@ def self_attn(network, para, input_layer, index, ints):
     union_weights[2, :, :] = para["input_blocks.%s.1.transformer_blocks.0.attn1.to_v.weight" % index].transpose(1, 0)
     weights_constant = network.add_constant((1, 3, ints[0], ints[0]), format(union_weights))
     noise_in = network.add_matrix_multiply(out(noise_in), trt.MatrixOperation.NONE, out(weights_constant), trt.MatrixOperation.NONE) # 3 4096 320
+    return noise_in
     noise_in = network.add_shuffle(out(noise_in))
     noise_in.reshape_dims = (1, 3, 4096, 8, 40)
     noise_in.second_transpose = (0, 2, 3, 1, 4)
