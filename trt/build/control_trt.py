@@ -143,7 +143,7 @@ def self_attn(network, para, input_layer, index, ints):
 
     noise_in = ln(network, input_layer, para['input_blocks.%s.1.transformer_blocks.0.norm1.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.norm1.bias' % index]) # 1 4096 320
     noise_in = network.add_shuffle(out(noise_in))
-    noise_in.reshape_dims = (1, 4096, 1, 320)
+    noise_in.reshape_dims = (1, 1, 4096, 320)
     union_weights = np.zeros((1, 3, ints[0], ints[0]), dtype=np.float32)
     union_weights[:, 0, :, :] = para["input_blocks.%s.1.transformer_blocks.0.attn1.to_q.weight" % index].transpose(1, 0)
     union_weights[:, 1, :, :] = para["input_blocks.%s.1.transformer_blocks.0.attn1.to_k.weight" % index].transpose(1, 0)
