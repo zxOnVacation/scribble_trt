@@ -113,28 +113,6 @@ def hint_block(network, para, hint, temb, context):
     return hint_in
 
 
-def union_weights(n, para):
-    Wqkv = np.zeros((3, 768, 768), np.float32)
-    Bqkv = np.zeros((3, 768), np.float32)
-    Wqkv[0, :, :] = para['encoder.layers.%s.self_attn.%s_proj.weight' % (n, 'q')]
-    Wqkv[1, :, :] = para['encoder.layers.%s.self_attn.%s_proj.weight' % (n, 'k')]
-    Wqkv[2, :, :] = para['encoder.layers.%s.self_attn.%s_proj.weight' % (n, 'v')]
-    Bqkv[0, :] = para['encoder.layers.%s.self_attn.%s_proj.bias' % (n, 'q')]
-    Bqkv[1, :] = para['encoder.layers.%s.self_attn.%s_proj.bias' % (n, 'k')]
-    Bqkv[2, :] = para['encoder.layers.%s.self_attn.%s_proj.bias' % (n, 'v')]
-    Wqkv = np.ascontiguousarray(Wqkv.reshape((3, 12, 64, 12, 64)).transpose((1, 0, 2, 3, 4)))
-    Bqkv = np.ascontiguousarray(Bqkv.reshape((3, 12, 64)).transpose((1, 0, 2)))
-    return format(Wqkv), format(Bqkv)
-
-
-def gen_masks():
-    mask = torch.empty(1, 77, 77, dtype=torch.float32)
-    mask.fill_(torch.tensor(torch.finfo(torch.float32).min))
-    mask.triu_(1)
-    mask = mask.detach().cpu().numpy().reshape(1, 1, 77, 77)
-    return mask
-
-
 def out(layer, i=0):
     return layer.get_output(i)
 
@@ -155,35 +133,26 @@ def qkv_cal(network, para, i, input_layer):
     return qkv_mat
 
 
-def attn(network, para, i, input_layer, q_scale, masks):
-    qkv_mat = qkv_cal(network, para, i, input_layer) # 3 2 77 768
-    q_proj = network.add_slice(out(qkv_mat), (0, 0, 0, 0), (1, 2, 77, 768), (1, 1, 1, 1))
-    k_proj = network.add_slice(out(qkv_mat), (1, 0, 0, 0), (1, 2, 77, 768), (1, 1, 1, 1))
-    v_proj = network.add_slice(out(qkv_mat), (2, 0, 0, 0), (1, 2, 77, 768), (1, 1, 1, 1)) # 1 2 77 768
-    q_proj_re = network.add_shuffle(out(q_proj))
-    q_proj_re.reshape_dims = (2, 77, 12, 64)
-    q_proj_re.second_transpose = (0, 2, 1, 3) # 2 12 77 64
-    k_proj_re = network.add_shuffle(out(k_proj))
-    k_proj_re.reshape_dims = (2, 77, 12, 64)
-    k_proj_re.second_transpose = (0, 2, 1, 3) # 2 12 77 64
-    v_proj_re = network.add_shuffle(out(v_proj))
-    v_proj_re.reshape_dims = (2, 77, 12, 64)
-    v_proj_re.second_transpose = (0, 2, 1, 3) # 2 12 77 64
-    q_proj_scale = network.add_elementwise(out(q_proj_re), out(q_scale), trt.ElementWiseOperation.PROD) # 2 12 77 64
-    attn_weights = network.add_matrix_multiply(out(q_proj_scale), trt.MatrixOperation.NONE, out(k_proj_re), trt.MatrixOperation.TRANSPOSE) # 2 12 77 77
-    attn_mask_weights = network.add_elementwise(out(attn_weights), out(masks), trt.ElementWiseOperation.SUM) # 2 12 77 77
-    attn_norm_score = network.add_softmax(out(attn_mask_weights))
-    attn_norm_score.axes = 1 << 3
-    attn_v = network.add_matrix_multiply(out(attn_norm_score), trt.MatrixOperation.NONE, out(v_proj_re),trt.MatrixOperation.NONE)  # 2 12 77 64
-    attn_v_re = network.add_shuffle(out(attn_v))
-    attn_v_re.first_transpose = (0, 2, 1, 3)
-    attn_v_re.reshape_dims = (1, 2, 77, 768)
-    out_weight = network.add_constant((1, 1, 768, 768), format(para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'out')].transpose(1, 0).reshape(1, 1, 768, 768)))
-    out_bias = network.add_constant((1, 1, 1, 768), format(para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'out')].reshape(1, 1, 1, 768)))
-    attn_out = network.add_matrix_multiply(out(attn_v_re), trt.MatrixOperation.NONE, out(out_weight), trt.MatrixOperation.NONE) # 1 2 77 768
-    attn_out = network.add_elementwise(out(attn_out), out(out_bias), trt.ElementWiseOperation.SUM) # 1 2 77 768
-    return attn_out
+def self_attn(network, para, input_layer, index, ints):
+    def fmha():
+        for creator in trt.get_plugin_registry().plugin_creator_list:
+            if creator.name == "fMHA_V2":
+                pLists = []
+                return creator.create_plugin(creator.name, trt.PluginFieldCollection(pLists))
+        return None
 
+    noise_in = ln(network, input_layer, para['input_blocks.%s.1.transformer_blocks.0.norm1.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.norm1.bias' % index]) # 1 4096 320
+    union_weights = np.zeros((3, ints[0], ints[0]), dtype=np.float32)
+    union_weights[0, :, :] = para["input_blocks.%s.1.transformer_blocks.0.attn1.to_q.weight" % index].transpose(1, 0)
+    union_weights[1, :, :] = para["input_blocks.%s.1.transformer_blocks.0.attn1.to_k.weight" % index].transpose(1, 0)
+    union_weights[2, :, :] = para["input_blocks.%s.1.transformer_blocks.0.attn1.to_v.weight" % index].transpose(1, 0)
+    weights_constant = network.add_constant((1, 3, ints[0], ints[0]), format(union_weights))
+    noise_in = network.add_matrix_multiply(out(noise_in), trt.MatrixOperation.NONE, out(weights_constant), trt.MatrixOperation.NONE) # 3 4096 320
+    noise_in = network.add_shuffle(out(noise_in))
+    noise_in.reshape_dims = (1, 3, 4096, 8, 40)
+    noise_in.second_transpose = (0, 2, 3, 1, 4)
+    noise_in = network.add_plugin_v2([out(noise_in)], fmha()) # 1 4098 4 80
+    return noise_in
 
 def mlp(network, para, i, input_layer, gelu_scale):
     mlp1_weight = network.add_constant((1, 1, 768, 3072), format(para['text_model.encoder.layers.%s.mlp.fc%s.weight' % (i, 1)].transpose(1, 0).reshape(1, 1, 768, 3072)))
@@ -230,7 +199,8 @@ def build_in_1(network, para, in_layer, index, ints, context):
     noise_in.first_transpose = (0, 2, 3, 1)
     noise_in.reshape_dims = (1, 4096, 320)
     ### slef-attention
-    noise_in = ln(network, noise_in, para['input_blocks.%s.1.transformer_blocks.0.norm1.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.norm1.bias' % index])
+    noise_in = self_attn(network, para, noise_in, index, [320])
+
     return noise_in
 
 
