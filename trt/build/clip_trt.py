@@ -105,8 +105,8 @@ def attn(network, para, i, input_layer, q_scale, masks):
     attn_v_re = network.add_shuffle(out(attn_v))
     attn_v_re.first_transpose = (1, 0, 2)
     attn_v_re.reshape_dims = (1, 77, 768)
-    out_weight = network.add_constant((1, 768, 768), format(para['encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'out')].transpose(1, 0).reshape(1, 768, 768)))
-    out_bias = network.add_constant((1, 1, 768), format(para['encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'out')].reshape(1, 1, 768)))
+    out_weight = network.add_constant((1, 768, 768), format(para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'out')].transpose(1, 0).reshape(1, 768, 768)))
+    out_bias = network.add_constant((1, 1, 768), format(para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'out')].reshape(1, 1, 768)))
     attn_out = network.add_matrix_multiply(out(attn_v_re), trt.MatrixOperation.NONE, out(out_weight), trt.MatrixOperation.NONE) # 1 77 768
     attn_out = network.add_elementwise(out(attn_out), out(out_bias), trt.ElementWiseOperation.SUM) # 1 77 768
     return attn_out
