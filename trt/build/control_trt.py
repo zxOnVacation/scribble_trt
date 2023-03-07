@@ -230,7 +230,7 @@ def build_in_1(network, para, in_layer, index, ints, context):
     noise_in.first_transpose = (0, 2, 3, 1)
     noise_in.reshape_dims = (1, 4096, 320)
     ### slef-attention
-    noise_in = ln(network, noise_in, para['input_blocks.%s.1.transformer_blocks.0.norm1.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.norm1.weight' % index])
+    noise_in = ln(network, noise_in, para['input_blocks.%s.1.transformer_blocks.0.norm1.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.norm1.bias' % index])
     return noise_in
 
 
