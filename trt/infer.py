@@ -13,7 +13,7 @@ def control(embeddings):
     hint = torch.from_numpy(input_data['hint']).float().cuda() # 1 3 512 512
     t = torch.from_numpy(input_data['t']).float().cuda() # 1
     # context = torch.from_numpy(input_data['context']).to(dtype='torch.float32', device='cuda') # 2 77 768
-    context = torch.from_numpy(embeddings).float().cuda()
+    context = embeddings.float().cuda()
     noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
     hint_inp = cuda.DeviceView(ptr=hint.data_ptr(), shape=hint.shape, dtype=np.float32)
     t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
