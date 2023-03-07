@@ -275,8 +275,11 @@ def build_network(network, para, noise, hint, t, context):
 
 
 def control_trt():
+    import os
     paraFile = './weights/control.npz'
     bUseFP16Mode = True
+    bUseTimeCache = True
+    timeCacheFile = './control.cache'
     builder = trt.Builder(logger)
     network = builder.create_network(1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
     profile = builder.create_optimization_profile()
@@ -284,6 +287,18 @@ def control_trt():
     config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 7 << 30)
     if bUseFP16Mode:
         config.set_flag(trt.BuilderFlag.FP16)
+    timeCache = b""
+    if bUseTimeCache and os.path.isfile(timeCacheFile):
+        with open(timeCacheFile, "rb") as f:
+            timeCache = f.read()
+        if timeCache == None:
+            print("Failed getting serialized timing cache!")
+            return
+        print("Succeeded getting serialized timing cache!")
+
+    if bUseTimeCache:
+        cache = config.create_timing_cache(timeCache)
+        config.set_timing_cache(cache, False)
 
     #network build
     noise = network.add_input("noise", trt.float32, [1, 4, 64, 64])
@@ -308,6 +323,13 @@ def control_trt():
         print("Succeeded saving .plan file!")
 
     print('build done')
+
+    if bUseTimeCache:
+        timeCache = config.get_timing_cache()
+        timeCacheString = timeCache.serialize()
+        with open(timeCacheFile, "wb") as f:
+            f.write(timeCacheString)
+            print("Succeeded saving .cache file!")
 
 
 
