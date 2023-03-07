@@ -44,7 +44,7 @@ def time_embedding(network, para, t):
     freqs = np.exp(-math.log(10000) * torch.arange(start=0, end=160, dtype=torch.float32) / 160.0).reshape(1, 160) # 1 160
     freqs_c = network.add_constant((1, 160), format(freqs))
     ts = network.add_shuffle(t)
-    ts.reshape_dims = (1, 1)
+    ts.reshape_dims = (2, 1)
     time_freqs_c = network.add_matrix_multiply(out(ts), trt.MatrixOperation.NONE, out(freqs_c), trt.MatrixOperation.NONE)
     time_cos = network.add_unary(out(time_freqs_c), trt.UnaryOperation.COS)
     time_sin = network.add_unary(out(time_freqs_c), trt.UnaryOperation.SIN)
@@ -231,8 +231,11 @@ def build_in_1(network, para, in_layer, index, ints, context):
 
 
 def build_network(network, para, noise, hint, t, context):
-    temb = time_embedding(network, para, t) # 1 1280
+    temb = time_embedding(network, para, t) # 2 1280
     hint_in = hint_block(network, para, hint, temb, context) # 1 320 64 64
+    out(hint_in).name = 'dbrs_0'
+    network.mark_output(out(hint_in))
+    return network
 
     if 1:
         # 第一层
@@ -309,13 +312,13 @@ def control_trt():
         config.set_timing_cache(cache, False)
 
     #network build
-    noise = network.add_input("noise", trt.float32, [1, 4, 64, 64])
-    hint = network.add_input("hint", trt.float32, [1, 3, 512, 512])
-    t = network.add_input("t", trt.float32, [1, ])
+    noise = network.add_input("noise", trt.float32, [2, 4, 64, 64])
+    hint = network.add_input("hint", trt.float32, [2, 3, 512, 512])
+    t = network.add_input("t", trt.float32, [2, ])
     context = network.add_input("context", trt.float32, [2, 77, 768])
-    profile.set_shape(noise.name, (1, 4, 64, 64), (1, 4, 64, 64), (1, 4, 64, 64))
-    profile.set_shape(hint.name, (1, 3, 512, 512), (1, 3, 512, 512), (1, 3, 512, 512))
-    profile.set_shape(t.name, (1, ), (1, ), (1, ))
+    profile.set_shape(noise.name, (2, 4, 64, 64), (2, 4, 64, 64), (2, 4, 64, 64))
+    profile.set_shape(hint.name, (2, 3, 512, 512), (2, 3, 512, 512), (2, 3, 512, 512))
+    profile.set_shape(t.name, (2, ), (2, ), (2, ))
     profile.set_shape(context.name, (2, 77, 768), (2, 77, 768), (2, 77, 768))
     config.add_optimization_profile(profile)
     para = np.load(paraFile)
