@@ -204,7 +204,7 @@ def mlp(network, para, i, input_layer, gelu_scale):
 
 # build input第一阶段
 def build_in_0(network, para, in_layer, index, ints, temb, skip=False):
-    noise_in = gn(network, in_layer, format(para["input_blocks.%s.0.in_layers.0.weight" % index]), format(para["input_blocks.%s.0.in_layers.0.bias" % index]))
+    noise_in = gn(network, in_layer, para["input_blocks.%s.0.in_layers.0.weight" % index], para["input_blocks.%s.0.in_layers.0.bias" % index])
     noise_in = network.add_convolution(out(noise_in), ints[0], (3, 3), format(para["input_blocks.%s.0.in_layers.2.weight" % index]), format(para["input_blocks.%s.0.in_layers.2.bias" % index]))
     noise_in.padding = (1, 1)  # 1 320 64 64
     t_in = silu(network, temb)
@@ -212,7 +212,7 @@ def build_in_0(network, para, in_layer, index, ints, temb, skip=False):
     t_in = network.add_shuffle(out(t_in))
     t_in.reshape_dims = (1, 320, 1, 1)
     noise_in = network.add_elementwise(out(noise_in), out(t_in), trt.ElementWiseOperation.SUM)  # 1 320 64 64
-    noise_in = gn(network, noise_in, format(para["input_blocks.%s.0.out_layers.0.weight" % index]), format(para['input_blocks.%s.0.out_layers.0.bias' % index]))
+    noise_in = gn(network, noise_in, para["input_blocks.%s.0.out_layers.0.weight" % index], para['input_blocks.%s.0.out_layers.0.bias' % index])
     noise_in = network.add_convolution(out(noise_in), ints[1], (3, 3), format(para["input_blocks.%s.0.out_layers.3.weight" % index]), format(para["input_blocks.%s.0.out_layers.3.bias" % index]))
     noise_in.padding = (1, 1)  # 1 320 64 64
     if skip:
