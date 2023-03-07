@@ -69,7 +69,7 @@ def ln(network, inputs, gamma_weights, beta_weights):
     ln_out = network.add_plugin_v2([out(inputs), out(gamma_cons), out(beta_cons)], ln_plugin())
     return ln_out
 
-def gn(network, inputs, gamma_weights, beta_weights):
+def gn(network, inputs, gamma_weights, beta_weights, epsilon=1e-5, bSwish=1):
     def gn_plugin(epsilon=1e-5, bSwish=1):
         for creator in trt.get_plugin_registry().plugin_creator_list:
             if creator.name == "GroupNorm":
@@ -80,7 +80,7 @@ def gn(network, inputs, gamma_weights, beta_weights):
         return None
     gamma_cons = network.add_constant(gamma_weights.shape, format(gamma_weights))
     beta_cons = network.add_constant(beta_weights.shape, format(beta_weights))
-    gn_out = network.add_plugin_v2([out(inputs), out(gamma_cons), out(beta_cons)], gn_plugin())
+    gn_out = network.add_plugin_v2([out(inputs), out(gamma_cons), out(beta_cons)], gn_plugin(epsilon, bSwish))
     return gn_out
 
 def hint_block(network, para, hint, temb, context):
@@ -222,6 +222,21 @@ def build_in_0(network, para, in_layer, index, ints, temb, skip=False):
         noise_in = network.add_elementwise(out(in_layer), out(noise_in), trt.ElementWiseOperation.SUM)
     return noise_in
 
+# build input第二阶段
+def build_in_1(network, para, in_layer, index, ints, context):
+    noise_in = gn(network, in_layer, para['input_blocks.%s.1.norm.weight' % index], para['input_blocks.%s.1.norm.bias' % index], bSwish=0, epsilon=1e-6)
+    noise_in = network.add_convolution(out(noise_in), ints[0], (1, 1), format(para["input_blocks.%s.1.proj_in.weight" % index]), format(para["input_blocks.%s.1.proj_in.bias" % index])) # 1 320 64 64
+    noise_in = network.add_shuffle(out(noise_in))
+    noise_in.first_transpose = (0, 2, 3, 1)
+    noise_in.reshape_dims = (1, 4096, 320)
+    ### slef-attention
+    noise_in = ln(network, noise_in, para['input_blocks.%s.1.transformer_blocks.0.norm1.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.norm1.weight' % index])
+    return noise_in
+
+
+
+
+
 
 
 def build_network(network, para, noise, hint, t, context):
@@ -239,6 +254,7 @@ def build_network(network, para, noise, hint, t, context):
     if 2:
         # 第二层
         noise_in = build_in_0(network, para, noise_in, 1, [320, 320], temb) # 1 320 64 64
+        noise_in = build_in_1(network, para, noise_in, 1, [320, 320], temb)
         out(noise_in).name = 'dbrs_1'
         network.mark_output(out(noise_in))
     return network

@@ -51,7 +51,7 @@ def load_engines():
     control_engine = Engine("./build/engine/control.plan")
     control_engine.activate()
     control_engine.allocate_buffers({'noise': (1, 4, 64, 64), 'hint': (1, 3, 512, 512), 't': (1,), 'context': (2, 77, 768),
-                                     'dbrs_0': (1, 320, 64, 64), 'dbrs_1': (1, 320, 64, 64)})
+                                     'dbrs_0': (1, 320, 64, 64), 'dbrs_1': (1, 4096, 320)})
 
     return {"clip": clip_engine, "control": control_engine}
 
