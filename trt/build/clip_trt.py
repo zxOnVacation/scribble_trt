@@ -70,11 +70,11 @@ def qkv_cal(network, para, i, input_layer):
     union_weights = np.zeros((3, 1, 768, 768), dtype=np.float32)
     union_bias = np.zeros((3, 1, 1, 768), dtype=np.float32)
     union_weights[0, :, :, :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'q')].transpose(1, 0)
-    union_bias[0, :, , :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'q')]
-    union_weights[1, :, , :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'k')].transpose(1, 0)
-    union_bias[1, :, , :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'k')]
-    union_weights[2, :, , :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'v')].transpose(1, 0)
-    union_bias[2, :, , :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'v')]
+    union_bias[0, :, :, :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'q')]
+    union_weights[1, :, :, :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'k')].transpose(1, 0)
+    union_bias[1, :, :, :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'k')]
+    union_weights[2, :, :, :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'v')].transpose(1, 0)
+    union_bias[2, :, :, :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'v')]
     weights_constant = network.add_constant((3, 1, 768, 768), format(union_weights))
     bias_constant = network.add_constant((3, 1, 1, 768), format(union_bias))
     qkv_mat = network.add_matrix_multiply(out(input_layer), trt.MatrixOperation.NONE, out(weights_constant), trt.MatrixOperation.NONE) # 3 1 77 768
