@@ -58,7 +58,7 @@ def gen_masks():
     mask = torch.empty(1, 77, 77, dtype=torch.float32)
     mask.fill_(torch.tensor(torch.finfo(torch.float32).min))
     mask.triu_(1)
-    mask = mask.detach().cpu().numpy().reshape(1, 77, 77)
+    mask = mask.detach().cpu().numpy().reshape(1, 1, 77, 77)
     return mask
 
 
@@ -83,33 +83,32 @@ def qkv_cal(network, para, i, input_layer):
 
 
 def attn(network, para, i, input_layer, q_scale, masks):
-    qkv_mat = qkv_cal(network, para, i, input_layer)
-    return qkv_mat
-    q_proj = network.add_slice(out(qkv_mat), (0, 0, 0), (1, 77, 768), (1, 1, 1))
-    k_proj = network.add_slice(out(qkv_mat), (1, 0, 0), (1, 77, 768), (1, 1, 1))
-    v_proj = network.add_slice(out(qkv_mat), (2, 0, 0), (1, 77, 768), (1, 1, 1))
+    qkv_mat = qkv_cal(network, para, i, input_layer) # 3 2 77 768
+    q_proj = network.add_slice(out(qkv_mat), (0, 0, 0, 0), (1, 2, 77, 768), (1, 1, 1, 1))
+    k_proj = network.add_slice(out(qkv_mat), (1, 0, 0, 0), (1, 2, 77, 768), (1, 1, 1, 1))
+    v_proj = network.add_slice(out(qkv_mat), (2, 0, 0, 0), (1, 2, 77, 768), (1, 1, 1, 1)) # 1 2 77 768
     q_proj_re = network.add_shuffle(out(q_proj))
-    q_proj_re.reshape_dims = (77, 12, 64)
-    q_proj_re.second_transpose = (1, 0, 2) # 12 77 64
+    q_proj_re.reshape_dims = (2, 77, 12, 64)
+    q_proj_re.second_transpose = (0, 2, 1, 3) # 2 12 77 64
     k_proj_re = network.add_shuffle(out(k_proj))
-    k_proj_re.reshape_dims = (77, 12, 64)
-    k_proj_re.second_transpose = (1, 0, 2) # 12 77 64
+    k_proj_re.reshape_dims = (2, 77, 12, 64)
+    k_proj_re.second_transpose = (0, 2, 1, 3) # 2 12 77 64
     v_proj_re = network.add_shuffle(out(v_proj))
-    v_proj_re.reshape_dims = (77, 12, 64)
-    v_proj_re.second_transpose = (1, 0, 2) # 12 77 64
-    q_proj_scale = network.add_elementwise(out(q_proj_re), out(q_scale), trt.ElementWiseOperation.PROD) # 12 77 64
-    attn_weights = network.add_matrix_multiply(out(q_proj_scale), trt.MatrixOperation.NONE, out(k_proj_re), trt.MatrixOperation.TRANSPOSE) # 12 77 77
-    attn_mask_weights = network.add_elementwise(out(attn_weights), out(masks), trt.ElementWiseOperation.SUM) # 12 77 77
+    v_proj_re.reshape_dims = (2, 77, 12, 64)
+    v_proj_re.second_transpose = (0, 2, 1, 3) # 2 12 77 64
+    q_proj_scale = network.add_elementwise(out(q_proj_re), out(q_scale), trt.ElementWiseOperation.PROD) # 2 12 77 64
+    attn_weights = network.add_matrix_multiply(out(q_proj_scale), trt.MatrixOperation.NONE, out(k_proj_re), trt.MatrixOperation.TRANSPOSE) # 2 12 77 77
+    attn_mask_weights = network.add_elementwise(out(attn_weights), out(masks), trt.ElementWiseOperation.SUM) # 2 12 77 77
     attn_norm_score = network.add_softmax(out(attn_mask_weights))
-    attn_norm_score.axes = 1 << 2
-    attn_v = network.add_matrix_multiply(out(attn_norm_score), trt.MatrixOperation.NONE, out(v_proj_re),trt.MatrixOperation.NONE)  # 12 77 64
+    attn_norm_score.axes = 1 << 3
+    attn_v = network.add_matrix_multiply(out(attn_norm_score), trt.MatrixOperation.NONE, out(v_proj_re),trt.MatrixOperation.NONE)  # 2 12 77 64
     attn_v_re = network.add_shuffle(out(attn_v))
-    attn_v_re.first_transpose = (1, 0, 2)
-    attn_v_re.reshape_dims = (1, 77, 768)
-    out_weight = network.add_constant((1, 768, 768), format(para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'out')].transpose(1, 0).reshape(1, 768, 768)))
-    out_bias = network.add_constant((1, 1, 768), format(para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'out')].reshape(1, 1, 768)))
-    attn_out = network.add_matrix_multiply(out(attn_v_re), trt.MatrixOperation.NONE, out(out_weight), trt.MatrixOperation.NONE) # 1 77 768
-    attn_out = network.add_elementwise(out(attn_out), out(out_bias), trt.ElementWiseOperation.SUM) # 1 77 768
+    attn_v_re.first_transpose = (0, 2, 1, 3)
+    attn_v_re.reshape_dims = (1, 2, 77, 768)
+    out_weight = network.add_constant((1, 1, 768, 768), format(para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'out')].transpose(1, 0).reshape(1, 1, 768, 768)))
+    out_bias = network.add_constant((1, 1, 1, 768), format(para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'out')].reshape(1, 1, 1, 768)))
+    attn_out = network.add_matrix_multiply(out(attn_v_re), trt.MatrixOperation.NONE, out(out_weight), trt.MatrixOperation.NONE) # 1 2 77 768
+    attn_out = network.add_elementwise(out(attn_out), out(out_bias), trt.ElementWiseOperation.SUM) # 1 2 77 768
     return attn_out
 
 
@@ -137,7 +136,7 @@ def build_network(network, para, inputTensor):
     input_embedding = network.add_elementwise(out(token_embedding), out(position_embeddings), trt.ElementWiseOperation.SUM) # 2, 77, 768 embedding
 
     q_scale = network.add_constant((1, 1, 1), format(np.array([0.125], dtype=np.float32)))
-    masks = network.add_constant((1, 77, 77), format(gen_masks()))
+    masks = network.add_constant((1, 1, 77, 77), format(gen_masks()))
     gelu_scale = network.add_constant((1, 1, 1), format(np.array([1.702], dtype=np.float32)))
     input_embedding = network.add_shuffle(out(input_embedding))
     input_embedding.reshape_dims = (1, 2, 77, 768)
