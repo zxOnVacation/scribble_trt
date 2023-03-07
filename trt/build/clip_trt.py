@@ -135,7 +135,7 @@ def build_network(network, para, inputTensor):
     position_embeddings = network.add_constant((1, 77, 768), format(para['text_model.embeddings.position_embedding.weight'].reshape(1, 77, 768)))
     input_embedding = network.add_elementwise(out(token_embedding), out(position_embeddings), trt.ElementWiseOperation.SUM) # 2, 77, 768 embedding
 
-    q_scale = network.add_constant((1, 1, 1), format(np.array([0.125], dtype=np.float32)))
+    q_scale = network.add_constant((1, 1, 1, 1), format(np.array([0.125], dtype=np.float32)))
     masks = network.add_constant((1, 1, 77, 77), format(gen_masks()))
     gelu_scale = network.add_constant((1, 1, 1), format(np.array([1.702], dtype=np.float32)))
     input_embedding = network.add_shuffle(out(input_embedding))
