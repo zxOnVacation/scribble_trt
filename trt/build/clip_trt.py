@@ -113,17 +113,17 @@ def attn(network, para, i, input_layer, q_scale, masks):
 
 
 def mlp(network, para, i, input_layer, gelu_scale):
-    mlp1_weight = network.add_constant((1, 768, 3072), format(para['encoder.layers.%s.mlp.fc%s.weight' % (i, 1)].transpose(1, 0).reshape(1, 768, 3072)))
-    mlp1_bias = network.add_constant((1, 1, 3072), format(para['encoder.layers.%s.mlp.fc%s.bias' % (i, 1)].reshape(1, 1, 3072)))
+    mlp1_weight = network.add_constant((1, 1, 768, 3072), format(para['text_model.encoder.layers.%s.mlp.fc%s.weight' % (i, 1)].transpose(1, 0).reshape(1, 1, 768, 3072)))
+    mlp1_bias = network.add_constant((1, 1, 1, 3072), format(para['text_model.encoder.layers.%s.mlp.fc%s.bias' % (i, 1)].reshape(1, 1, 1, 3072)))
     mlp1_out = network.add_matrix_multiply(out(input_layer), trt.MatrixOperation.NONE, out(mlp1_weight), trt.MatrixOperation.NONE) # 1 77 768
-    mlp1_out = network.add_elementwise(out(mlp1_out), out(mlp1_bias), trt.ElementWiseOperation.SUM) # 1 77 768
+    mlp1_out = network.add_elementwise(out(mlp1_out), out(mlp1_bias), trt.ElementWiseOperation.SUM) # 1 2 77 768
 
     mlp_1_i1 = network.add_elementwise(out(mlp1_out), out(gelu_scale), trt.ElementWiseOperation.PROD)
     mlp_1_i2 = network.add_activation(out(mlp_1_i1), trt.ActivationType.SIGMOID)
     mlp_gelu = network.add_elementwise(out(mlp1_out), out(mlp_1_i2), trt.ElementWiseOperation.PROD)
 
-    mlp2_weight = network.add_constant((1, 3072, 768), format(para['encoder.layers.%s.mlp.fc%s.weight' % (i, 2)].transpose(1, 0).reshape(1, 3072, 768)))
-    mlp2_bias = network.add_constant((1, 1, 768), format(para['encoder.layers.%s.mlp.fc%s.bias' % (i, 2)].reshape(1, 1, 768)))
+    mlp2_weight = network.add_constant((1, 1, 3072, 768), format(para['text_model.encoder.layers.%s.mlp.fc%s.weight' % (i, 2)].transpose(1, 0).reshape(1, 1, 3072, 768)))
+    mlp2_bias = network.add_constant((1, 1, 1, 768), format(para['text_model.encoder.layers.%s.mlp.fc%s.bias' % (i, 2)].reshape(1, 1, 1, 768)))
     mlp2_out = network.add_matrix_multiply(out(mlp_gelu), trt.MatrixOperation.NONE, out(mlp2_weight), trt.MatrixOperation.NONE) # 1 77 768
     mlp2_out = network.add_elementwise(out(mlp2_out), out(mlp2_bias), trt.ElementWiseOperation.SUM) # 1 77 768
     return mlp2_out
@@ -137,22 +137,20 @@ def build_network(network, para, inputTensor):
 
     q_scale = network.add_constant((1, 1, 1, 1), format(np.array([0.125], dtype=np.float32)))
     masks = network.add_constant((1, 1, 77, 77), format(gen_masks()))
-    gelu_scale = network.add_constant((1, 1, 1), format(np.array([1.702], dtype=np.float32)))
+    gelu_scale = network.add_constant((1, 1, 1, 1), format(np.array([1.702], dtype=np.float32)))
     input_embedding = network.add_shuffle(out(input_embedding))
     input_embedding.reshape_dims = (1, 2, 77, 768)
     residual = input_embedding # 1 2 77 768
     for i in range(1):
         ln_0 = ln(network, residual, para['text_model.encoder.layers.%s.layer_norm1.weight' % i], para['text_model.encoder.layers.%s.layer_norm1.bias' % i]) # 1 2 77 768
-        attn_out = attn(network, para, i, ln_0, q_scale, masks)
-        out(attn_out).name = 'embeddings'
-        network.mark_output(out(attn_out))
-        return network
-
-
-        residual = network.add_elementwise(out(attn_out), out(residual), trt.ElementWiseOperation.SUM)
-        ln_1 = network.add_plugin_v2([out(residual), out(residual)], ln_plugin(para['encoder.layers.%s.layer_norm2.bias' % i], para['encoder.layers.%s.layer_norm2.weight' % i]))
+        attn_out = attn(network, para, i, ln_0, q_scale, masks) # 1 2 77 768
+        residual = network.add_elementwise(out(attn_out), out(residual), trt.ElementWiseOperation.SUM) # 1 2 77 768
+        ln_1 = ln(network, residual, para['text_model.encoder.layers.%s.layer_norm2.weight' % i], para['text_model.encoder.layers.%s.layer_norm2.bias' % i]) # 1 2 77 768
         mlp_out = mlp(network, para, i, ln_1, gelu_scale)
-        residual = network.add_elementwise(out(mlp_out), out(residual), trt.ElementWiseOperation.SUM)
+        residual = network.add_elementwise(out(mlp_out), out(residual), trt.ElementWiseOperation.SUM) # 1 2 77 768
+        out(residual).name = 'embeddings'
+        network.mark_output(out(residual))
+        return network
 
     output = network.add_plugin_v2([out(residual), out(residual)], ln_plugin(para['final_layer_norm.bias'], para['final_layer_norm.weight']))
     output_reshape = network.add_shuffle(out(output))
