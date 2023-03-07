@@ -9,9 +9,9 @@ from pytorch_lightning import seed_everything
 
 def control(embeddings):
     input_data = np.load('./build/weights/control_input.npz')
-    noise = torch.from_numpy(input_data['noise']).float().cuda() # 1 4 64 64
-    hint = torch.from_numpy(input_data['hint']).float().cuda() # 1 3 512 512
-    t = torch.from_numpy(input_data['t']).float().cuda() # 1
+    noise = torch.from_numpy(np.repeat(input_data['noise'], 2, axis=0)).float().cuda() # 2 4 64 64
+    hint = torch.from_numpy(np.repeat(input_data['hint'], 2, axis=0)).float().cuda() # 2 3 512 512
+    t = torch.from_numpy(np.repeat(input_data['t'], 2, axis=0)).float().cuda() # 2
     # context = torch.from_numpy(input_data['context']).to(dtype='torch.float32', device='cuda') # 2 77 768
     context = embeddings.float().cuda()
     noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
@@ -50,8 +50,8 @@ def load_engines():
     clip_engine.allocate_buffers({'tokens': (2, 77), 'embeddings': (2, 77, 768)})
     control_engine = Engine("./build/engine/control.plan")
     control_engine.activate()
-    control_engine.allocate_buffers({'noise': (1, 4, 64, 64), 'hint': (1, 3, 512, 512), 't': (1,), 'context': (2, 77, 768),
-                                     'dbrs_0': (1, 320, 64, 64), 'dbrs_1': (2, 4096, 320)})
+    control_engine.allocate_buffers({'noise': (2, 4, 64, 64), 'hint': (2, 3, 512, 512), 't': (2,), 'context': (2, 77, 768),
+                                     'dbrs_0': (2, 320, 64, 64), 'dbrs_1': (2, 4096, 320)})
 
     return {"clip": clip_engine, "control": control_engine}
 

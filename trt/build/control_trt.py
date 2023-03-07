@@ -195,13 +195,13 @@ def mlp(network, para, i, input_layer, gelu_scale):
 def build_in_0(network, para, in_layer, index, ints, temb, skip=False):
     noise_in = gn(network, in_layer, para["input_blocks.%s.0.in_layers.0.weight" % index], para["input_blocks.%s.0.in_layers.0.bias" % index])
     noise_in = network.add_convolution(out(noise_in), ints[0], (3, 3), format(para["input_blocks.%s.0.in_layers.2.weight" % index]), format(para["input_blocks.%s.0.in_layers.2.bias" % index]))
-    noise_in.padding = (1, 1)  # 1 320 64 64
+    noise_in.padding = (1, 1)  # 2 320 64 64
     t_in = silu(network, temb)
 
-    t_in = matrix_mul(network, t_in, para["input_blocks.%s.0.emb_layers.1.weight" % index], para["input_blocks.%s.0.emb_layers.1.bias" % index], (1280, 320), (1, 320))  # 1 320
+    t_in = matrix_mul(network, t_in, para["input_blocks.%s.0.emb_layers.1.weight" % index], para["input_blocks.%s.0.emb_layers.1.bias" % index], (1280, 320), (1, 320))  # 2 320
     t_in = network.add_shuffle(out(t_in))
-    t_in.reshape_dims = (1, 320, 1, 1)
-    noise_in = network.add_elementwise(out(noise_in), out(t_in), trt.ElementWiseOperation.SUM)  # 1 320 64 64
+    t_in.reshape_dims = (2, 320, 1, 1)
+    noise_in = network.add_elementwise(out(noise_in), out(t_in), trt.ElementWiseOperation.SUM)  # 2 320 64 64
     noise_in = gn(network, noise_in, para["input_blocks.%s.0.out_layers.0.weight" % index], para['input_blocks.%s.0.out_layers.0.bias' % index])
     noise_in = network.add_convolution(out(noise_in), ints[1], (3, 3), format(para["input_blocks.%s.0.out_layers.3.weight" % index]), format(para["input_blocks.%s.0.out_layers.3.bias" % index]))
     noise_in.padding = (1, 1)  # 1 320 64 64
@@ -214,7 +214,7 @@ def build_in_0(network, para, in_layer, index, ints, temb, skip=False):
 # build input第二阶段
 def build_in_1(network, para, in_layer, index, ints, context):
     noise_in = gn(network, in_layer, para['input_blocks.%s.1.norm.weight' % index], para['input_blocks.%s.1.norm.bias' % index], bSwish=0, epsilon=1e-6)
-    noise_in = network.add_convolution(out(noise_in), ints[0], (1, 1), format(para["input_blocks.%s.1.proj_in.weight" % index]), format(para["input_blocks.%s.1.proj_in.bias" % index])) # 1 320 64 64
+    noise_in = network.add_convolution(out(noise_in), ints[0], (1, 1), format(para["input_blocks.%s.1.proj_in.weight" % index]), format(para["input_blocks.%s.1.proj_in.bias" % index])) # 2 320 64 64
     noise_in = network.add_shuffle(out(noise_in))
     noise_in.first_transpose = (0, 2, 3, 1)
     noise_in.reshape_dims = (2, 4096, 320)
@@ -232,23 +232,19 @@ def build_in_1(network, para, in_layer, index, ints, context):
 
 def build_network(network, para, noise, hint, t, context):
     temb = time_embedding(network, para, t) # 2 1280
-    hint_in = hint_block(network, para, hint, temb, context) # 1 320 64 64
-    out(hint_in).name = 'dbrs_0'
-    network.mark_output(out(hint_in))
-    return network
+    hint_in = hint_block(network, para, hint, temb, context) # 2 320 64 64
 
     if 1:
         # 第一层
         noise_in = network.add_convolution(noise, 320, (3, 3), format(para['input_blocks.0.0.weight']), format(para['input_blocks.0.0.bias']))
-        noise_in.padding = (1, 1) # 1 320 64 64
-        noise_in = network.add_elementwise(out(noise_in), out(hint_in), trt.ElementWiseOperation.SUM) # 1 320 64 64
-        noise_in = network.add_concatenation([out(noise_in), out(noise_in)])
-        out_0 = network.add_convolution(out(noise_in), 320, (1, 1), format(para['zero_convs.0.0.weight']), format(para['zero_convs.0.0.bias']))  # 1 320 64 64
+        noise_in.padding = (1, 1) # 2 320 64 64
+        noise_in = network.add_elementwise(out(noise_in), out(hint_in), trt.ElementWiseOperation.SUM) # 2 320 64 64
+        out_0 = network.add_convolution(out(noise_in), 320, (1, 1), format(para['zero_convs.0.0.weight']), format(para['zero_convs.0.0.bias']))  # 2 320 64 64
         out(out_0).name = 'dbrs_0'
         network.mark_output(out(out_0))
     if 2:
         # 第二层
-        noise_in = build_in_0(network, para, noise_in, 1, [320, 320], temb) # 1 320 64 64
+        noise_in = build_in_0(network, para, noise_in, 1, [320, 320], temb) # 2 320 64 64
         noise_in = build_in_1(network, para, noise_in, 1, [320, 320], context)
         out(noise_in).name = 'dbrs_1'
         network.mark_output(out(noise_in))
