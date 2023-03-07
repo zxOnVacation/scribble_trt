@@ -36,7 +36,7 @@ def ln_plugin(epsilon=1e-5, axis=-1):
 def ln(network, inputs, gamma_weights, beta_weights):
     gamma_cons = network.add_constant(gamma_weights.shape, format(gamma_weights))
     beta_cons = network.add_constant(beta_weights.shape, format(beta_weights))
-    ln_out = network.add_plugin_v2([out(inputs), out(gamma_cons), out(beta_cons)], ln_plugin(axis=2))
+    ln_out = network.add_plugin_v2([out(inputs), out(gamma_cons), out(beta_cons)], ln_plugin())
     return ln_out
 
 
@@ -67,18 +67,18 @@ def out(layer, i=0):
 
 
 def qkv_cal(network, para, i, input_layer):
-    union_weights = np.zeros((3, 768, 768), dtype=np.float32)
-    union_bias = np.zeros((3, 1, 768), dtype=np.float32)
-    union_weights[0, :, :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'q')].transpose(1, 0)
-    union_bias[0, :, :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'q')]
-    union_weights[1, :, :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'k')].transpose(1, 0)
-    union_bias[1, :, :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'k')]
-    union_weights[2, :, :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'v')].transpose(1, 0)
-    union_bias[2, :, :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'v')]
-    weights_constant = network.add_constant((3, 768, 768), format(union_weights))
-    bias_constant = network.add_constant((3, 1, 768), format(union_bias))
-    qkv_mat = network.add_matrix_multiply(out(input_layer), trt.MatrixOperation.NONE, out(weights_constant), trt.MatrixOperation.NONE) # 3 77 768
-    qkv_mat = network.add_elementwise(out(qkv_mat), out(bias_constant), trt.ElementWiseOperation.SUM) # 3 77 768
+    union_weights = np.zeros((3, 1, 768, 768), dtype=np.float32)
+    union_bias = np.zeros((3, 1, 1, 768), dtype=np.float32)
+    union_weights[0, :, :, :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'q')].transpose(1, 0)
+    union_bias[0, :, , :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'q')]
+    union_weights[1, :, , :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'k')].transpose(1, 0)
+    union_bias[1, :, , :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'k')]
+    union_weights[2, :, , :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.weight' % (i, 'v')].transpose(1, 0)
+    union_bias[2, :, , :] = para['text_model.encoder.layers.%s.self_attn.%s_proj.bias' % (i, 'v')]
+    weights_constant = network.add_constant((3, 1, 768, 768), format(union_weights))
+    bias_constant = network.add_constant((3, 1, 1, 768), format(union_bias))
+    qkv_mat = network.add_matrix_multiply(out(input_layer), trt.MatrixOperation.NONE, out(weights_constant), trt.MatrixOperation.NONE) # 3 1 77 768
+    qkv_mat = network.add_elementwise(out(qkv_mat), out(bias_constant), trt.ElementWiseOperation.SUM) # 3 2 77 768
     return qkv_mat
 
 
@@ -139,10 +139,11 @@ def build_network(network, para, inputTensor):
     q_scale = network.add_constant((1, 1, 1), format(np.array([0.125], dtype=np.float32)))
     masks = network.add_constant((1, 77, 77), format(gen_masks()))
     gelu_scale = network.add_constant((1, 1, 1), format(np.array([1.702], dtype=np.float32)))
-
-    residual = input_embedding
+    input_embedding = network.add_shuffle(out(input_embedding))
+    input_embedding.reshape_dims = (1, 2, 77, 768)
+    residual = input_embedding # 1 2 77 768
     for i in range(1):
-        ln_0 = ln(network, residual, para['text_model.encoder.layers.%s.layer_norm1.weight' % i], para['text_model.encoder.layers.%s.layer_norm1.bias' % i])
+        ln_0 = ln(network, residual, para['text_model.encoder.layers.%s.layer_norm1.weight' % i], para['text_model.encoder.layers.%s.layer_norm1.bias' % i]) # 1 2 77 768
         attn_out = attn(network, para, i, ln_0, q_scale, masks)
         out(attn_out).name = 'embeddings'
         network.mark_output(out(attn_out))
