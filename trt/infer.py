@@ -11,12 +11,12 @@ def control(embeddings):
     input_data = np.load('./build/weights/control_input.npz')
     noise = torch.from_numpy(input_data['noise']).to(dtype='torch.float32', device='cuda') # 1 4 64 64
     hint = torch.from_numpy(input_data['hint']).to(dtype='torch.float32', device='cuda') # 1 3 512 512
-    t = torch.from_numpy(input_data['t']).to(dtype='torch.int32', device='cuda') # 1
+    t = torch.from_numpy(input_data['t']).to(dtype='torch.float32', device='cuda') # 1
     # context = torch.from_numpy(input_data['context']).to(dtype='torch.float32', device='cuda') # 2 77 768
     context = embeddings
     noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
     hint_inp = cuda.DeviceView(ptr=hint.data_ptr(), shape=hint.shape, dtype=np.float32)
-    t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.int32)
+    t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
     context_inp = cuda.DeviceView(ptr=context.data_ptr(), shape=context.shape, dtype=np.float32)
     dbrs_1 = engines['control'].infer({'noise': noise_inp, 'hint': hint_inp, 't': t_inp, 'context': context_inp})['dbrs_1']
     print(dbrs_1)

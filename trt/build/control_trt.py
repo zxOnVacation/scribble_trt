@@ -208,6 +208,7 @@ def build_in_0(network, para, in_layer, index, ints, temb, skip=False):
     noise_in = network.add_convolution(out(noise_in), ints[0], (3, 3), format(para["input_blocks.%s.0.in_layers.2.weight" % index]), format(para["input_blocks.%s.0.in_layers.2.bias" % index]))
     noise_in.padding = (1, 1)  # 1 320 64 64
     t_in = silu(network, temb)
+
     t_in = matrix_mul(network, t_in, para["input_blocks.%s.0.emb_layers.1.weight" % index], para["input_blocks.%s.0.emb_layers.1.bias" % index], (1280, 320), (1, 320))  # 1 320
     t_in = network.add_shuffle(out(t_in))
     t_in.reshape_dims = (1, 320, 1, 1)
@@ -287,7 +288,7 @@ def control_trt():
     #network build
     noise = network.add_input("noise", trt.float32, [1, 4, 64, 64])
     hint = network.add_input("hint", trt.float32, [1, 3, 512, 512])
-    t = network.add_input("t", trt.int32, [1, ])
+    t = network.add_input("t", trt.float32, [1, ])
     context = network.add_input("context", trt.float32, [2, 77, 768])
     profile.set_shape(noise.name, (1, 4, 64, 64), (1, 4, 64, 64), (1, 4, 64, 64))
     profile.set_shape(hint.name, (1, 3, 512, 512), (1, 3, 512, 512), (1, 3, 512, 512))
