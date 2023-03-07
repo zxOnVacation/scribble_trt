@@ -245,7 +245,7 @@ def build_network(network, para, noise, hint, t, context):
     if 2:
         # 第二层
         noise_in = build_in_0(network, para, noise_in, 1, [320, 320], temb) # 1 320 64 64
-        noise_in = build_in_1(network, para, noise_in, 1, [320, 320], temb)
+        noise_in = build_in_1(network, para, noise_in, 1, [320, 320], context)
         out(noise_in).name = 'dbrs_1'
         network.mark_output(out(noise_in))
     return network
