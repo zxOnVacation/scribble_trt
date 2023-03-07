@@ -141,21 +141,18 @@ def build_network(network, para, inputTensor):
     input_embedding = network.add_shuffle(out(input_embedding))
     input_embedding.reshape_dims = (1, 2, 77, 768)
     residual = input_embedding # 1 2 77 768
-    for i in range(1):
+    for i in range(12):
         ln_0 = ln(network, residual, para['text_model.encoder.layers.%s.layer_norm1.weight' % i], para['text_model.encoder.layers.%s.layer_norm1.bias' % i]) # 1 2 77 768
         attn_out = attn(network, para, i, ln_0, q_scale, masks) # 1 2 77 768
         residual = network.add_elementwise(out(attn_out), out(residual), trt.ElementWiseOperation.SUM) # 1 2 77 768
         ln_1 = ln(network, residual, para['text_model.encoder.layers.%s.layer_norm2.weight' % i], para['text_model.encoder.layers.%s.layer_norm2.bias' % i]) # 1 2 77 768
         mlp_out = mlp(network, para, i, ln_1, gelu_scale)
         residual = network.add_elementwise(out(mlp_out), out(residual), trt.ElementWiseOperation.SUM) # 1 2 77 768
-        out(residual).name = 'embeddings'
-        network.mark_output(out(residual))
-        return network
 
-    output = network.add_plugin_v2([out(residual), out(residual)], ln_plugin(para['final_layer_norm.bias'], para['final_layer_norm.weight']))
+    output = ln(network, residual, para['text_model.final_layer_norm.weight'], para['text_model.final_layer_norm.bias'])
     output_reshape = network.add_shuffle(out(output))
-    output_reshape.reshape_dims = (1, 77, 768)
-    out(output_reshape).name = 'clip_text_embedding'
+    output_reshape.reshape_dims = (2, 77, 768)
+    out(output_reshape).name = 'embeddings'
     network.mark_output(out(output_reshape))
     return network
 

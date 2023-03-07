@@ -32,7 +32,7 @@ def clip(text_a, text_b):
 def load_engines():
     clip_engine = Engine("./build/engine/clip.plan")
     clip_engine.activate()
-    clip_engine.allocate_buffers({'tokens': (2, 77), 'embeddings': (1, 2, 77, 768)})
+    clip_engine.allocate_buffers({'tokens': (2, 77), 'embeddings': (2, 77, 768)})
 
     return {"clip": clip_engine}
 
