@@ -112,11 +112,11 @@ def build_network(network, para, noise, t, context, dbrs_0, dbrs_1, dbrs_2, dbrs
         noise_in = network.add_concatenation([out(noise_in), out(c_in)])
         noise_in = build_out_0(network, para, noise_in, 6, [1920, 640], temb, skip=True)
         noise_in = build_out_1(network, para, noise_in, 6, [640, 640], context, 32)
-    # if 23: # up-7
-    #     c_in = network.add_elementwise(out(in_4), dbrs_4, trt.ElementWiseOperation.SUM)
-    #     noise_in = network.add_concatenation([out(noise_in), out(c_in)])
-    #     noise_in = build_out_0(network, para, noise_in, 7, [1280, 640], temb, skip=True)
-    #     noise_in = build_out_1(network, para, noise_in, 7, [640, 640], context, 32)
+    if 23: # up-7
+        c_in = network.add_elementwise(out(in_4), dbrs_4, trt.ElementWiseOperation.SUM)
+        noise_in = network.add_concatenation([out(noise_in), out(c_in)])
+        noise_in = build_out_0(network, para, noise_in, 7, [1280, 640], temb, skip=True)
+        noise_in = build_out_1(network, para, noise_in, 7, [640, 640], context, 32)
     # if 24: # up-8
     #     c_in = network.add_elementwise(out(in_3), dbrs_3, trt.ElementWiseOperation.SUM)
     #     noise_in = network.add_concatenation([out(noise_in), out(c_in)]) # 1 2560 16 16
