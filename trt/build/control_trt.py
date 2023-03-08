@@ -137,24 +137,24 @@ def cross_attn(network, para, input_layer, index, ints, context):
 
     noise_in = ln(network, input_layer, para['input_blocks.%s.1.transformer_blocks.0.norm2.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.norm2.bias' % index]) # 1 4096 320
     noise_in = network.add_shuffle(out(noise_in))
-    noise_in.reshape_dims = (2, 1, 4096, 320)
-    q = matrix_mul(network, noise_in, para['input_blocks.%s.1.transformer_blocks.0.attn2.to_q.weight' % index], None, (1, 1, 320, 320), None, False) # 1 1 4096 320
+    noise_in.reshape_dims = (2, 1, -1, ints[0])
+    q = matrix_mul(network, noise_in, para['input_blocks.%s.1.transformer_blocks.0.attn2.to_q.weight' % index], None, (1, 1, ints[0], ints[0]), None, False) # 1 1 4096 320
     q = network.add_shuffle(out(q))
-    q.reshape_dims = (2, 4096, 8, 40)
+    q.reshape_dims = (2, -1, 8, ints[0]//8)
     kv_context = network.add_shuffle(context)
     kv_context.reshape_dims = (2, 1, 77, 768)
-    union_weights = np.zeros((1, 2, 768, 320), dtype=np.float32)
+    union_weights = np.zeros((1, 2, 768, ints[0]), dtype=np.float32)
     union_weights[:, 0, :, :] = para["input_blocks.%s.1.transformer_blocks.0.attn2.to_k.weight" % index].transpose(1, 0)
     union_weights[:, 1, :, :] = para["input_blocks.%s.1.transformer_blocks.0.attn2.to_v.weight" % index].transpose(1, 0)
-    weights_constant = network.add_constant((1, 2, 768, 320), format(union_weights))
+    weights_constant = network.add_constant((1, 2, 768, ints[0]), format(union_weights))
     kv = network.add_matrix_multiply(out(kv_context), trt.MatrixOperation.NONE, out(weights_constant), trt.MatrixOperation.NONE) #2 2 77 320
     kv = network.add_shuffle(out(kv)) # 1 3 4096 320
-    kv.reshape_dims = (2, 2, 77, 8, 40)
+    kv.reshape_dims = (2, 2, 77, 8, ints[0]//8)
     kv.second_transpose = (0, 2, 3, 1, 4) # 2 77 8 2 40
     noise_in = network.add_plugin_v2([out(q), out(kv)], fmhca()) # 2 4098 4 80
     noise_in = network.add_shuffle(out(noise_in))
-    noise_in.reshape_dims = (2, 4096, 320)
-    noise_in = matrix_mul(network, noise_in, para['input_blocks.%s.1.transformer_blocks.0.attn2.to_out.0.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.attn2.to_out.0.bias' % index], (1, 320, 320), (1, 1, 320))
+    noise_in.reshape_dims = (2, -1, ints[0])
+    noise_in = matrix_mul(network, noise_in, para['input_blocks.%s.1.transformer_blocks.0.attn2.to_out.0.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.attn2.to_out.0.bias' % index], (1, ints[0], ints[0]), (1, 1, ints[0]))
     noise_in = network.add_elementwise(out(noise_in), out(input_layer), trt.ElementWiseOperation.SUM)
     return noise_in
 
@@ -168,7 +168,7 @@ def self_attn(network, para, input_layer, index, ints):
 
     noise_in = ln(network, input_layer, para['input_blocks.%s.1.transformer_blocks.0.norm1.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.norm1.bias' % index]) # 1 4096 320
     noise_in = network.add_shuffle(out(noise_in))
-    noise_in.reshape_dims = (2, 1, 4096, 320)
+    noise_in.reshape_dims = (2, 1, -1, ints[0])
     union_weights = np.zeros((1, 3, ints[0], ints[0]), dtype=np.float32)
     union_weights[:, 0, :, :] = para["input_blocks.%s.1.transformer_blocks.0.attn1.to_q.weight" % index].transpose(1, 0)
     union_weights[:, 1, :, :] = para["input_blocks.%s.1.transformer_blocks.0.attn1.to_k.weight" % index].transpose(1, 0)
@@ -176,74 +176,51 @@ def self_attn(network, para, input_layer, index, ints):
     weights_constant = network.add_constant((1, 3, ints[0], ints[0]), format(union_weights))
     noise_in = network.add_matrix_multiply(out(noise_in), trt.MatrixOperation.NONE, out(weights_constant), trt.MatrixOperation.NONE) #1 3 4096 320
     noise_in = network.add_shuffle(out(noise_in)) # 1 3 4096 320
-    noise_in.reshape_dims = (2, 3, 4096, 8, 40)
+    noise_in.reshape_dims = (2, 3, -1, 8, ints[0]//8)
     noise_in.second_transpose = (0, 2, 3, 1, 4)
     noise_in = network.add_plugin_v2([out(noise_in)], fmha()) # 1 4098 4 80
     noise_in = network.add_shuffle(out(noise_in))
-    noise_in.reshape_dims = (2, 4096, 320)
-    noise_in = matrix_mul(network, noise_in, para['input_blocks.%s.1.transformer_blocks.0.attn1.to_out.0.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.attn1.to_out.0.bias' % index], (1, 320, 320), (1, 1, 320))
+    noise_in.reshape_dims = (2, -1, ints[0])
+    noise_in = matrix_mul(network, noise_in, para['input_blocks.%s.1.transformer_blocks.0.attn1.to_out.0.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.attn1.to_out.0.bias' % index], (1, ints[0], ints[0]), (1, 1, ints[0]))
     noise_in = network.add_elementwise(out(noise_in), out(input_layer), trt.ElementWiseOperation.SUM)
     return noise_in
-
-def mlp(network, para, i, input_layer, gelu_scale):
-    mlp1_weight = network.add_constant((1, 1, 768, 3072), format(para['text_model.encoder.layers.%s.mlp.fc%s.weight' % (i, 1)].transpose(1, 0).reshape(1, 1, 768, 3072)))
-    mlp1_bias = network.add_constant((1, 1, 1, 3072), format(para['text_model.encoder.layers.%s.mlp.fc%s.bias' % (i, 1)].reshape(1, 1, 1, 3072)))
-    mlp1_out = network.add_matrix_multiply(out(input_layer), trt.MatrixOperation.NONE, out(mlp1_weight), trt.MatrixOperation.NONE) # 1 77 768
-    mlp1_out = network.add_elementwise(out(mlp1_out), out(mlp1_bias), trt.ElementWiseOperation.SUM) # 1 2 77 768
-
-    mlp_1_i1 = network.add_elementwise(out(mlp1_out), out(gelu_scale), trt.ElementWiseOperation.PROD)
-    mlp_1_i2 = network.add_activation(out(mlp_1_i1), trt.ActivationType.SIGMOID)
-    mlp_gelu = network.add_elementwise(out(mlp1_out), out(mlp_1_i2), trt.ElementWiseOperation.PROD)
-
-    mlp2_weight = network.add_constant((1, 1, 3072, 768), format(para['text_model.encoder.layers.%s.mlp.fc%s.weight' % (i, 2)].transpose(1, 0).reshape(1, 1, 3072, 768)))
-    mlp2_bias = network.add_constant((1, 1, 1, 768), format(para['text_model.encoder.layers.%s.mlp.fc%s.bias' % (i, 2)].reshape(1, 1, 1, 768)))
-    mlp2_out = network.add_matrix_multiply(out(mlp_gelu), trt.MatrixOperation.NONE, out(mlp2_weight), trt.MatrixOperation.NONE) # 1 77 768
-    mlp2_out = network.add_elementwise(out(mlp2_out), out(mlp2_bias), trt.ElementWiseOperation.SUM) # 1 77 768
-    return mlp2_out
-
 
 # build input第一阶段
 def build_in_0(network, para, in_layer, index, ints, temb, skip=False):
     noise_in = gn(network, in_layer, para["input_blocks.%s.0.in_layers.0.weight" % index], para["input_blocks.%s.0.in_layers.0.bias" % index])
-    noise_in = network.add_convolution(out(noise_in), ints[0], (3, 3), format(para["input_blocks.%s.0.in_layers.2.weight" % index]), format(para["input_blocks.%s.0.in_layers.2.bias" % index]))
+    noise_in = network.add_convolution(out(noise_in), ints[1], (3, 3), format(para["input_blocks.%s.0.in_layers.2.weight" % index]), format(para["input_blocks.%s.0.in_layers.2.bias" % index]))
     noise_in.padding = (1, 1)  # 2 320 64 64
     t_in = silu(network, temb)
 
-    t_in = matrix_mul(network, t_in, para["input_blocks.%s.0.emb_layers.1.weight" % index], para["input_blocks.%s.0.emb_layers.1.bias" % index], (1280, 320), (1, 320))  # 2 320
+    t_in = matrix_mul(network, t_in, para["input_blocks.%s.0.emb_layers.1.weight" % index], para["input_blocks.%s.0.emb_layers.1.bias" % index], (1280, ints[1]), (1, ints[1]))  # 2 320
     t_in = network.add_shuffle(out(t_in))
-    t_in.reshape_dims = (2, 320, 1, 1)
+    t_in.reshape_dims = (2, ints[1], 1, 1)
     noise_in = network.add_elementwise(out(noise_in), out(t_in), trt.ElementWiseOperation.SUM)  # 2 320 64 64
     noise_in = gn(network, noise_in, para["input_blocks.%s.0.out_layers.0.weight" % index], para['input_blocks.%s.0.out_layers.0.bias' % index])
     noise_in = network.add_convolution(out(noise_in), ints[1], (3, 3), format(para["input_blocks.%s.0.out_layers.3.weight" % index]), format(para["input_blocks.%s.0.out_layers.3.bias" % index]))
     noise_in.padding = (1, 1)  # 1 320 64 64
     if skip:
-        pass
-    else:
-        noise_in = network.add_elementwise(out(in_layer), out(noise_in), trt.ElementWiseOperation.SUM)
+        in_layer = network.add_convolution(out(in_layer), ints[1], (1, 1), format(para["input_blocks.%s.0.skip_connection.weight" % index]), format(para["input_blocks.%s.0.skip_connection.bias" % index]))
+    noise_in = network.add_elementwise(out(in_layer), out(noise_in), trt.ElementWiseOperation.SUM)
     return noise_in
 
 # build input第二阶段
-def build_in_1(network, para, in_layer, index, ints, context):
+def build_in_1(network, para, in_layer, index, ints, context, hw):
     noise_in = gn(network, in_layer, para['input_blocks.%s.1.norm.weight' % index], para['input_blocks.%s.1.norm.bias' % index], bSwish=0, epsilon=1e-6)
-    noise_in = network.add_convolution(out(noise_in), ints[0], (1, 1), format(para["input_blocks.%s.1.proj_in.weight" % index]), format(para["input_blocks.%s.1.proj_in.bias" % index])) # 2 320 64 64
+    noise_in = network.add_convolution(out(noise_in), ints[1], (1, 1), format(para["input_blocks.%s.1.proj_in.weight" % index]), format(para["input_blocks.%s.1.proj_in.bias" % index])) # 2 320 64 64
     noise_in = network.add_shuffle(out(noise_in))
     noise_in.first_transpose = (0, 2, 3, 1)
-    noise_in.reshape_dims = (2, 4096, 320)
+    noise_in.reshape_dims = (2, -1, ints[1])
     ### slef-attention
-    noise_in = self_attn(network, para, noise_in, index, [320])
-    noise_in = cross_attn(network, para, noise_in, index, [320], context)
-    noise_in = ffn(network, para, noise_in, index, [320]) # 2 4096 320
+    noise_in = self_attn(network, para, noise_in, index, [ints[1]])
+    noise_in = cross_attn(network, para, noise_in, index, [ints[1]], context)
+    noise_in = ffn(network, para, noise_in, index, [ints[1]]) # 2 4096 320
     noise_in = network.add_shuffle(out(noise_in))
     noise_in.first_transpose = (0, 2, 1)
-    noise_in.reshape_dims = (2, 320, 64, 64)
-    noise_in = network.add_convolution(out(noise_in), 320, (1, 1), format(para['input_blocks.%s.1.proj_out.weight' % index]), format(para['input_blocks.%s.1.proj_out.bias' % index])) # 2 320 64 64
+    noise_in.reshape_dims = (2, ints[1], hw, hw)
+    noise_in = network.add_convolution(out(noise_in), ints[1], (1, 1), format(para['input_blocks.%s.1.proj_out.weight' % index]), format(para['input_blocks.%s.1.proj_out.bias' % index])) # 2 320 64 64
     noise_in = network.add_elementwise(out(noise_in), out(in_layer), trt.ElementWiseOperation.SUM) # 2 320 64 64
     return noise_in
-
-
-
-
-
 
 
 def build_network(network, para, noise, hint, t, context):
@@ -261,20 +238,32 @@ def build_network(network, para, noise, hint, t, context):
     if 2:
         # 第二层
         noise_in = build_in_0(network, para, noise_in, 1, [320, 320], temb) # 2 320 64 64
-        noise_in = build_in_1(network, para, noise_in, 1, [320, 320], context) # 2 320 64 64
+        noise_in = build_in_1(network, para, noise_in, 1, [320, 320], context, 64) # 2 320 64 64
         out_1 = network.add_convolution(out(noise_in), 320, (1, 1), format(para['zero_convs.1.0.weight']), format(para['zero_convs.1.0.bias']))  # 2 320 64 64
         out(out_1).name = 'dbrs_1'
         network.mark_output(out(out_1))
     if 3:
         # 第三层
         noise_in = build_in_0(network, para, noise_in, 2, [320, 320], temb) # 2 320 64 64
-        noise_in = build_in_1(network, para, noise_in, 2, [320, 320], context) # 2 320 64 64
+        noise_in = build_in_1(network, para, noise_in, 2, [320, 320], context, 64) # 2 320 64 64
         out_2 = network.add_convolution(out(noise_in), 320, (1, 1), format(para['zero_convs.2.0.weight']), format(para['zero_convs.2.0.bias']))  # 2 320 64 64
         out(out_2).name = 'dbrs_2'
         network.mark_output(out(out_2))
     if 4:
         # 第四层
-        pass
+        noise_in = network.add_convolution(out(noise_in), 320, (3, 3), format(para['input_blocks.3.0.op.weight']), format(para['input_blocks.3.0.op.bias']))  # 2 320 32 32
+        noise_in.stride = (2, 2)
+        noise_in.padding = (1, 1)
+        out_3 = network.add_convolution(out(noise_in), 320, (1, 1), format(para['zero_convs.3.0.weight']), format(para['zero_convs.3.0.bias']))  # 2 320 64 64
+        out(out_3).name = 'dbrs_3'
+        network.mark_output(out(out_3))
+    if 5:
+        # 第五层
+        noise_in = build_in_0(network, para, noise_in, 5, [320, 640], temb, skip=True) # 2 320 64 64
+        noise_in = build_in_1(network, para, noise_in, 5, [640, 640], context, 32) # 2 320 64 64
+        out_4 = network.add_convolution(out(noise_in), 640, (1, 1), format(para['zero_convs.4.0.weight']), format(para['zero_convs.4.0.bias']))  # 2 320 64 64
+        out(out_4).name = 'dbrs_4'
+        network.mark_output(out(out_4))
 
 
 
