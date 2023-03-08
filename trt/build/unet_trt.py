@@ -95,7 +95,7 @@ def build_network(network, para, noise, t, context, dbrs_0, dbrs_1, dbrs_2, dbrs
         c_in = network.add_elementwise(out(in_8), dbrs_8, trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)]) # 1 2560 16 16
         noise_in = build_out_0(network, para, noise_in, 3, [2560, 1280], temb, skip=True)
-        noise_in = build_out_1(network, para, noise_in, 3, [1280], context, 16)
+        noise_in = build_out_1(network, para, noise_in, 3, [1280, 1280], context, 16)
 
 
 
