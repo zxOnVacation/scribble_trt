@@ -259,8 +259,8 @@ def build_network(network, para, noise, hint, t, context):
         network.mark_output(out(out_3))
     if 5:
         # 第五层
-        noise_in = build_in_0(network, para, noise_in, 5, [320, 640], temb, skip=True) # 2 320 64 64
-        noise_in = build_in_1(network, para, noise_in, 5, [640, 640], context, 32) # 2 320 64 64
+        noise_in = build_in_0(network, para, noise_in, 4, [320, 640], temb, skip=True) # 2 320 64 64
+        noise_in = build_in_1(network, para, noise_in, 4, [640, 640], context, 32) # 2 320 64 64
         out_4 = network.add_convolution(out(noise_in), 640, (1, 1), format(para['zero_convs.4.0.weight']), format(para['zero_convs.4.0.bias']))  # 2 320 64 64
         out(out_4).name = 'dbrs_4'
         network.mark_output(out(out_4))
