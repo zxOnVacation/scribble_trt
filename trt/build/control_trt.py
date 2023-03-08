@@ -274,6 +274,7 @@ def build_network(network, para, noise, hint, t, context):
         network.mark_output(out(out_2))
     if 4:
         # 第四层
+        pass
 
 
 
@@ -282,11 +283,11 @@ def build_network(network, para, noise, hint, t, context):
 
 
 
-        out(noise_in).name = 'dbrs_1'
-
-
-
-        network.mark_output(out(noise_in))
+        # out(noise_in).name = 'dbrs_1'
+        #
+        #
+        #
+        # network.mark_output(out(noise_in))
     return network
 
 
