@@ -77,7 +77,7 @@ def build_network(network, para, noise, t, context, dbrs_0, dbrs_1, dbrs_2, dbrs
         noise_in = build_mid_1(network, para, noise_in, 1, [1280, 1280], context, 8)
     if 15: # mid第3层
         noise_in = build_mid_0(network, para, noise_in, 2, [1280, 1280], temb, skip=False)
-        noise_in = network.add_elementwise(out(noise_in), mbrs_0, trt.ElementWiseOperation.SUM) # 2 1280 8 8
+        # noise_in = network.add_elementwise(out(noise_in), mbrs_0, trt.ElementWiseOperation.SUM) # 2 1280 8 8
 
     out(noise_in).name = 'eps'
     network.mark_output(out(noise_in))
