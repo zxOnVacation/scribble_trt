@@ -62,7 +62,10 @@ def up_trt(network, para, index, input_layer, ints):
                 return creator.create_plugin(creator.name, trt.PluginFieldCollection(pLists))
         return None
     up_out = network.add_plugin_v2([out(input_layer)], resize_trt())
-    up_out = network.add_convolution(out(up_out), ints[0], (3, 3), format(para['output_blocks.%s.1.conv.weight' % index]), format(para['output_blocks.%s.1.conv.bias' % index]))  # 2 320 32 32
+    if index == 2:
+        up_out = network.add_convolution(out(up_out), ints[0], (3, 3), format(para['output_blocks.%s.1.conv.weight' % index]), format(para['output_blocks.%s.1.conv.bias' % index]))  # 2 320 32 32
+    else:
+        up_out = network.add_convolution(out(up_out), ints[0], (3, 3), format(para['output_blocks.%s.2.conv.weight' % index]), format(para['output_blocks.%s.2.conv.bias' % index]))  # 2 320 32 32
     up_out.padding = (1, 1)
     return up_out
 
