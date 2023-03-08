@@ -6,20 +6,45 @@ import einops
 import random
 from pytorch_lightning import seed_everything
 
+input_data = np.load('./build/weights/control_input.npz')
+noise = torch.from_numpy(np.repeat(input_data['noise'], 2, axis=0)).float().cuda()  # 2 4 64 64
+hint = torch.from_numpy(np.repeat(input_data['hint'], 2, axis=0)).float().cuda()  # 2 3 512 512
+t = torch.from_numpy(np.repeat(input_data['t'], 2, axis=0)).float().cuda()  # 2
+
+
+def unet(embeddings, control_outs):
+    c = control_outs
+    noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
+    t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
+    context_inp = cuda.DeviceView(ptr=embeddings.float().data_ptr(), shape=embeddings.shape, dtype=np.float32)
+    dbrs0_inp = cuda.DeviceView(ptr=c[0].float().data_ptr(), shape=c[0].shape, dtype=np.float32)
+    dbrs1_inp = cuda.DeviceView(ptr=c[1].float().data_ptr(), shape=c[1].shape, dtype=np.float32)
+    dbrs2_inp = cuda.DeviceView(ptr=c[2].float().data_ptr(), shape=c[2].shape, dtype=np.float32)
+    dbrs3_inp = cuda.DeviceView(ptr=c[3].float().data_ptr(), shape=c[3].shape, dtype=np.float32)
+    dbrs4_inp = cuda.DeviceView(ptr=c[4].float().data_ptr(), shape=c[4].shape, dtype=np.float32)
+    dbrs5_inp = cuda.DeviceView(ptr=c[5].float().data_ptr(), shape=c[5].shape, dtype=np.float32)
+    dbrs6_inp = cuda.DeviceView(ptr=c[6].float().data_ptr(), shape=c[6].shape, dtype=np.float32)
+    dbrs7_inp = cuda.DeviceView(ptr=c[7].float().data_ptr(), shape=c[7].shape, dtype=np.float32)
+    dbrs8_inp = cuda.DeviceView(ptr=c[8].float().data_ptr(), shape=c[8].shape, dtype=np.float32)
+    dbrs9_inp = cuda.DeviceView(ptr=c[9].float().data_ptr(), shape=c[9].shape, dtype=np.float32)
+    dbrs10_inp = cuda.DeviceView(ptr=c[10].float().data_ptr(), shape=c[10].shape, dtype=np.float32)
+    dbrs11_inp = cuda.DeviceView(ptr=c[11].float().data_ptr(), shape=c[11].shape, dtype=np.float32)
+    mbrs0_inp = cuda.DeviceView(ptr=c[12].float().data_ptr(), shape=c[12].shape, dtype=np.float32)
+
+    eps = engines['unet'].infer({'noise': noise_inp, 't': t_inp, 'context': context_inp, 'dbrs_0': dbrs0_inp, 'dbrs_1': dbrs1_inp, 'dbrs_2': dbrs2_inp, 'dbrs_3': dbrs3_inp, 'dbrs_4': dbrs4_inp, 'dbrs_5': dbrs5_inp,
+                                 'dbrs_6': dbrs6_inp, 'dbrs_7': dbrs7_inp, 'dbrs_8': dbrs8_inp, 'dbrs_9': dbrs9_inp, 'dbrs_10': dbrs10_inp, 'dbrs_11': dbrs11_inp, 'mbrs_0': mbrs0_inp})['eps']
+    print(eps)
+
 
 def control(embeddings):
-    input_data = np.load('./build/weights/control_input.npz')
-    noise = torch.from_numpy(np.repeat(input_data['noise'], 2, axis=0)).float().cuda() # 2 4 64 64
-    hint = torch.from_numpy(np.repeat(input_data['hint'], 2, axis=0)).float().cuda() # 2 3 512 512
-    t = torch.from_numpy(np.repeat(input_data['t'], 2, axis=0)).float().cuda() # 2
     # context = torch.from_numpy(input_data['context']).to(dtype='torch.float32', device='cuda') # 2 77 768
     context = embeddings.float().cuda()
     noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
     hint_inp = cuda.DeviceView(ptr=hint.data_ptr(), shape=hint.shape, dtype=np.float32)
     t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
     context_inp = cuda.DeviceView(ptr=context.data_ptr(), shape=context.shape, dtype=np.float32)
-    dbrs_1 = engines['control'].infer({'noise': noise_inp, 'hint': hint_inp, 't': t_inp, 'context': context_inp})['mbrs_0']
-    print(dbrs_1)
+    control_out = engines['control'].infer({'noise': noise_inp, 'hint': hint_inp, 't': t_inp, 'context': context_inp})
+    return control_out
 
 
 
@@ -55,8 +80,13 @@ def load_engines():
                                      'dbrs_3': (2, 320, 32, 32), 'dbrs_4': (2, 640, 32, 32), 'dbrs_5': (2, 640, 32, 32),
                                      'dbrs_6': (2, 640, 16, 16), 'dbrs_7': (2, 1280, 16, 16), 'dbrs_8': (2, 1280, 16, 16),
                                      'dbrs_9': (2, 1280, 8, 8), 'dbrs_10': (2, 1280, 8, 8), 'dbrs_11': (2, 1280, 8, 8), 'mbrs_0': (2, 1280, 8, 8)})
+    unet_engine = Engine("./build/engine/unet.plan")
+    unet_engine.activate()
+    unet_engine.allocate_buffers({'noise': (2, 4, 64, 64), 't': (2,), 'context': (2, 77, 768), 'dbrs_0': (2, 320, 64, 64), 'dbrs_1': (2, 320, 64, 64), 'dbrs_2': (2, 320, 64, 64),
+                                     'dbrs_3': (2, 320, 32, 32), 'dbrs_4': (2, 640, 32, 32), 'dbrs_5': (2, 640, 32, 32), 'dbrs_6': (2, 640, 16, 16), 'dbrs_7': (2, 1280, 16, 16), 'dbrs_8': (2, 1280, 16, 16),
+                                     'dbrs_9': (2, 1280, 8, 8), 'dbrs_10': (2, 1280, 8, 8), 'dbrs_11': (2, 1280, 8, 8), 'mbrs_0': (2, 1280, 8, 8), 'eps': (2, 1280, 8 ,8)})
 
-    return {"clip": clip_engine, "control": control_engine}
+    return {"clip": clip_engine, "control": control_engine, "unet": unet_engine}
 
 
 
@@ -72,7 +102,6 @@ if __name__ == '__main__':
     if seed == -1:
         seed = random.randint(0, 65535)
     seed_everything(seed)
-
     embeddings = clip(prompt, neg_prompt)
-
-    control(embeddings)
+    control_outs = control(embeddings)
+    unet(embeddings, control_outs)
