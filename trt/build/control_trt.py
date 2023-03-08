@@ -24,7 +24,6 @@ ctypes.cdll.LoadLibrary('libnvinfer_plugin.so')
 def format(weights):
     return trt.Weights(np.ascontiguousarray(weights))
 
-
 def matrix_mul(network, input_layer, weight, bias, weight_shape, bias_shape, flag=True):
     m1_weight = network.add_constant(weight_shape, format(weight.transpose(1, 0).reshape(weight_shape)))
     m1_out = network.add_matrix_multiply(out(input_layer), trt.MatrixOperation.NONE, out(m1_weight), trt.MatrixOperation.NONE)
@@ -33,12 +32,10 @@ def matrix_mul(network, input_layer, weight, bias, weight_shape, bias_shape, fla
         m1_out = network.add_elementwise(out(m1_out), out(m1_bias), trt.ElementWiseOperation.SUM)
     return m1_out
 
-
 def silu(network, input_layer):
     silu_sig = network.add_activation(out(input_layer), trt.ActivationType.SIGMOID)
     siluR = network.add_elementwise(out(silu_sig), out(input_layer), trt.ElementWiseOperation.PROD)
     return siluR
-
 
 def time_embedding(network, para, t):
     freqs = np.exp(-math.log(10000) * torch.arange(start=0, end=160, dtype=torch.float32) / 160.0).reshape(1, 160) # 1 160
@@ -115,6 +112,17 @@ def hint_block(network, para, hint, temb, context):
 
 def out(layer, i=0):
     return layer.get_output(i)
+
+def ffn(network, para, input_layer, index):
+    def geglu():
+        for creator in trt.get_plugin_registry().plugin_creator_list:
+            if creator.name == "SplitGeLU":
+                pLists = []
+                return creator.create_plugin(creator.name, trt.PluginFieldCollection(pLists))
+        return None
+    noise_in = ln(network, input_layer, para['input_blocks.%s.1.transformer_blocks.0.norm3.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.norm3.bias' % index])  # 2 4096 320
+    noise_in = network.add_plugin_v2([out(noise_in)], geglu())
+    return noise_in
 
 def cross_attn(network, para, input_layer, index, ints, context):
     def fmhca():
@@ -221,6 +229,7 @@ def build_in_1(network, para, in_layer, index, ints, context):
     ### slef-attention
     noise_in = self_attn(network, para, noise_in, index, [320])
     noise_in = cross_attn(network, para, noise_in, index, [320], context)
+    noise_in = ffn(network, para, noise_in, index)
 
     return noise_in
 
