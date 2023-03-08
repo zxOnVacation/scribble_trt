@@ -264,7 +264,55 @@ def build_network(network, para, noise, hint, t, context):
         out_4 = network.add_convolution(out(noise_in), 640, (1, 1), format(para['zero_convs.4.0.weight']), format(para['zero_convs.4.0.bias']))  # 2 320 64 64
         out(out_4).name = 'dbrs_4'
         network.mark_output(out(out_4))
-
+    if 6:
+        # 第6层
+        noise_in = build_in_0(network, para, noise_in, 5, [640, 640], temb)  # 2 320 64 64
+        noise_in = build_in_1(network, para, noise_in, 5, [640, 640], context, 32)  # 2 320 64 64
+        out_5 = network.add_convolution(out(noise_in), 640, (1, 1), format(para['zero_convs.5.0.weight']), format(para['zero_convs.5.0.bias']))  # 2 320 64 64
+        out(out_5).name = 'dbrs_5'
+        network.mark_output(out(out_5))
+    if 7:
+        # 第7层
+        noise_in = network.add_convolution(out(noise_in), 640, (3, 3), format(para['input_blocks.6.0.op.weight']), format(para['input_blocks.6.0.op.bias']))  # 2 320 32 32
+        noise_in.stride = (2, 2)
+        noise_in.padding = (1, 1)
+        out_6 = network.add_convolution(out(noise_in), 640, (1, 1), format(para['zero_convs.6.0.weight']), format(para['zero_convs.6.0.bias']))  # 2 320 64 64
+        out(out_6).name = 'dbrs_6'
+        network.mark_output(out(out_6))
+    if 8:
+        # 第8层
+        noise_in = build_in_0(network, para, noise_in, 7, [640, 1280], temb, skip=True) # 2 320 64 64
+        noise_in = build_in_1(network, para, noise_in, 7, [1280, 1280], context, 16) # 2 320 64 64
+        out_7 = network.add_convolution(out(noise_in), 1280, (1, 1), format(para['zero_convs.7.0.weight']), format(para['zero_convs.7.0.bias']))  # 2 320 64 64
+        out(out_7).name = 'dbrs_7'
+        network.mark_output(out(out_7))
+    if 9:
+        # 第9层
+        noise_in = build_in_0(network, para, noise_in, 8, [1280, 1280], temb, skip=False)  # 2 320 64 64
+        noise_in = build_in_1(network, para, noise_in, 8, [1280, 1280], context, 16)  # 2 320 64 64
+        out_8 = network.add_convolution(out(noise_in), 1280, (1, 1), format(para['zero_convs.8.0.weight']), format(para['zero_convs.8.0.bias']))  # 2 320 64 64
+        out(out_8).name = 'dbrs_8'
+        network.mark_output(out(out_8))
+    if 10:
+        # 第10层
+        noise_in = network.add_convolution(out(noise_in), 1280, (3, 3), format(para['input_blocks.9.0.op.weight']), format(para['input_blocks.9.0.op.bias']))  # 2 320 32 32
+        noise_in.stride = (2, 2)
+        noise_in.padding = (1, 1)
+        out_9 = network.add_convolution(out(noise_in), 1280, (1, 1), format(para['zero_convs.9.0.weight']), format(para['zero_convs.9.0.bias']))  # 2 320 64 64
+        out(out_9).name = 'dbrs_9'
+        network.mark_output(out(out_9))
+    if 11:
+        # 第11层
+        noise_in = build_in_0(network, para, noise_in, 10, [1280, 1280], temb, skip=False)  # 2 320 64 64
+        out_10 = network.add_convolution(out(noise_in), 1280, (1, 1), format(para['zero_convs.10.0.weight']), format(para['zero_convs.10.0.bias']))  # 2 320 64 64
+        out(out_10).name = 'dbrs_10'
+        network.mark_output(out(out_10))
+    if 12:
+        # 第12层
+        noise_in = build_in_0(network, para, noise_in, 10, [1280, 1280], temb, skip=False)  # 2 320 64 64
+        out_11 = network.add_convolution(out(noise_in), 1280, (1, 1), format(para['zero_convs.11.0.weight']), format(para['zero_convs.11.0.bias']))  # 2 320 64 64
+        out(out_11).name = 'dbrs_11'
+        network.mark_output(out(out_11))
 
 
 
