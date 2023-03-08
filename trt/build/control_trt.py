@@ -147,11 +147,35 @@ def cross_attn(network, para, input_layer, index, ints, context):
     union_weights[:, 0, :, :] = para["input_blocks.%s.1.transformer_blocks.0.attn2.to_k.weight" % index].transpose(1, 0)
     union_weights[:, 1, :, :] = para["input_blocks.%s.1.transformer_blocks.0.attn2.to_v.weight" % index].transpose(1, 0)
     weights_constant = network.add_constant((1, 2, 768, ints[0]), format(union_weights))
-    kv = network.add_matrix_multiply(out(kv_context), trt.MatrixOperation.NONE, out(weights_constant), trt.MatrixOperation.NONE) #2 2 77 320
-    kv = network.add_shuffle(out(kv)) # 1 3 4096 320
-    kv.reshape_dims = (2, 2, 77, 8, ints[0]//8)
-    kv.second_transpose = (0, 2, 3, 1, 4) # 2 77 8 2 40
-    noise_in = network.add_plugin_v2([out(q), out(kv)], fmhca()) # 2 4098 4 80
+    kv = network.add_matrix_multiply(out(kv_context), trt.MatrixOperation.NONE, out(weights_constant), trt.MatrixOperation.NONE) # 2 2 77 320
+    if ints[0] < 1280:
+        kv = network.add_shuffle(out(kv))
+        kv.reshape_dims = (2, 2, 77, 8, ints[0]//8)
+        kv.second_transpose = (0, 2, 3, 1, 4) # 2 77 8 2 40
+        noise_in = network.add_plugin_v2([out(q), out(kv)], fmhca()) # 2 4096 4 80
+    else:
+        # 插件不支持 q 2 1 256 1280  kv 2 2 77 1280
+        q = network.add_shuffle(out(q))
+        q.reshape_dims = (2, -1, 8, ints[0] // 8)
+        q.second_transpose = (0, 2, 1, 3) # 2 8 256 160
+        k = network.add_slice(out(kv), (0, 0, 0, 0), (2, 1, 77, ints[0]), (1, 1, 1, 1))
+        k = network.add_shuffle(out(k))
+        k.reshape_dims = (2, -1, 8, ints[0] // 8)
+        k.second_transpose = (0, 2, 1, 3) # 2 8 77 160
+        v = network.add_slice(out(kv), (0, 1, 0, 0), (2, 1, 77, ints[0]), (1, 1, 1, 1))
+        v = network.add_shuffle(out(v))
+        v.reshape_dims = (2, -1, 8, ints[0] // 8)
+        v.second_transpose = (0, 2, 1, 3) # 2 8 77 160
+        qk = network.add_matrix_multiply(out(q), trt.MatrixOperation.NONE, out(k), trt.MatrixOperation.TRANSPOSE) # 2 8 256 77
+        scale = network.add_constant((1, 1, 1, 1), format(np.array(1 / math.sqrt(ints[0] // 8), dtype=np.float32)))
+        qk = network.add_elementwise(out(qk), out(scale), trt.ElementWiseOperation.PROD) # 2 8 256 77
+        qk = network.add_softmax(out(qk))
+        qk.axes = 1 << 3 # 2 8 256 77
+        v = network.add_matrix_multiply(out(qk), trt.MatrixOperation.NONE, out(v), trt.MatrixOperation.NONE) # 2 8 256 160
+        v = network.add_shuffle(out(v))
+        v.first_transpose = (0, 2, 1, 3)
+        v.reshape_dims = (2, -1, 8, ints[0]//8)
+        noise_in = v
     noise_in = network.add_shuffle(out(noise_in))
     noise_in.reshape_dims = (2, -1, ints[0])
     noise_in = matrix_mul(network, noise_in, para['input_blocks.%s.1.transformer_blocks.0.attn2.to_out.0.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.attn2.to_out.0.bias' % index], (1, ints[0], ints[0]), (1, 1, ints[0]))
