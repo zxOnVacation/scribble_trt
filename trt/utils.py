@@ -28,7 +28,7 @@ class Engine():
         self.context = None
         self.buffers = OrderedDict()
         self.tensors = OrderedDict()
-        self.stream = cuda.Stream()
+
 
     def __del__(self):
         [buf.free() for buf in self.buffers.values() if isinstance(buf, cuda.DeviceArray) ]
@@ -36,7 +36,6 @@ class Engine():
         del self.context
         del self.buffers
         del self.tensors
-        del self.stream
 
     def activate(self):
         print(f"Loading TensorRT engine: {self.engine_path}")
@@ -60,7 +59,7 @@ class Engine():
             self.tensors[binding] = tensor
             self.buffers[binding] = cuda.DeviceView(ptr=tensor.data_ptr(), shape=shape, dtype=dtype)
 
-    def infer(self, feed_dict):
+    def infer(self, feed_dict, stream=cuda.Stream()):
         start_binding, end_binding = trt_util.get_active_profile_bindings(self.context)
         # shallow copy of ordered dict
         device_buffers = copy(self.buffers)
@@ -68,7 +67,7 @@ class Engine():
             assert isinstance(buf, cuda.DeviceView)
             device_buffers[name] = buf
         bindings = [0] * start_binding + [buf.ptr for buf in device_buffers.values()]
-        noerror = self.context.execute_async_v2(bindings=bindings, stream_handle=self.stream.ptr)
+        noerror = self.context.execute_async_v2(bindings=bindings, stream_handle=stream.ptr)
         if not noerror:
             raise ValueError(f"ERROR: inference failed.")
 
