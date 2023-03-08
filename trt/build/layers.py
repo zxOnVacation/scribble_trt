@@ -210,6 +210,25 @@ def self_attn(network, para, input_layer, index, ints):
     return noise_in
 
 # build input第一阶段
+def build_out_0(network, para, in_layer, index, ints, temb, skip=False):
+    noise_in = gn(network, in_layer, para["output_blocks.%s.0.in_layers.0.weight" % index], para["output_blocks.%s.0.in_layers.0.bias" % index])
+    noise_in = network.add_convolution(out(noise_in), ints[1], (3, 3), format(para["output_blocks.%s.0.in_layers.2.weight" % index]), format(para["output_blocks.%s.0.in_layers.2.bias" % index]))
+    noise_in.padding = (1, 1)  # 2 320 64 64
+    t_in = silu(network, temb)
+
+    t_in = matrix_mul(network, t_in, para["output_blocks.%s.0.emb_layers.1.weight" % index], para["output_blocks.%s.0.emb_layers.1.bias" % index], (1280, ints[1]), (1, ints[1]))  # 2 320
+    t_in = network.add_shuffle(out(t_in))
+    t_in.reshape_dims = (2, ints[1], 1, 1)
+    noise_in = network.add_elementwise(out(noise_in), out(t_in), trt.ElementWiseOperation.SUM)  # 2 320 64 64
+    noise_in = gn(network, noise_in, para["output_blocks.%s.0.out_layers.0.weight" % index], para['output_blocks.%s.0.out_layers.0.bias' % index])
+    noise_in = network.add_convolution(out(noise_in), ints[1], (3, 3), format(para["output_blocks.%s.0.out_layers.3.weight" % index]), format(para["output_blocks.%s.0.out_layers.3.bias" % index]))
+    noise_in.padding = (1, 1)  # 1 320 64 64
+    if skip:
+        in_layer = network.add_convolution(out(in_layer), ints[1], (1, 1), format(para["output_blocks.%s.0.skip_connection.weight" % index]), format(para["output_blocks.%s.0.skip_connection.bias" % index]))
+    noise_in = network.add_elementwise(out(in_layer), out(noise_in), trt.ElementWiseOperation.SUM)
+    return noise_in
+
+# build input第一阶段
 def build_in_0(network, para, in_layer, index, ints, temb, skip=False):
     noise_in = gn(network, in_layer, para["input_blocks.%s.0.in_layers.0.weight" % index], para["input_blocks.%s.0.in_layers.0.bias" % index])
     noise_in = network.add_convolution(out(noise_in), ints[1], (3, 3), format(para["input_blocks.%s.0.in_layers.2.weight" % index]), format(para["input_blocks.%s.0.in_layers.2.bias" % index]))

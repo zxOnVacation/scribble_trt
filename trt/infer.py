@@ -46,10 +46,10 @@ def unet(embeddings, control_outs):
     dbrs10_inp = cuda.DeviceView(ptr=dbrs_10.data_ptr(), shape=dbrs_10.shape, dtype=np.float32)
     dbrs11_inp = cuda.DeviceView(ptr=dbrs_11.data_ptr(), shape=dbrs_11.shape, dtype=np.float32)
     mbrs0_inp = cuda.DeviceView(ptr=mbrs_0.data_ptr(), shape=mbrs_0.shape, dtype=np.float32)
-    eps = engines['unet'].infer({'u_noise': noise_inp, 'u_t': t_inp, 'u_context': context_inp, 'u_mbrs_0': mbrs0_inp}, stream)['eps']
+    # eps = engines['unet'].infer({'u_noise': noise_inp, 'u_t': t_inp, 'u_context': context_inp, 'u_mbrs_0': mbrs0_inp}, stream)['eps']
 
-    # eps = engines['unet'].infer({'u_noise': noise_inp, 'u_t': t_inp, 'u_context': context_inp, 'u_dbrs_0': dbrs0_inp, 'u_dbrs_1': dbrs1_inp, 'u_dbrs_2': dbrs2_inp, 'u_dbrs_3': dbrs3_inp, 'u_dbrs_4': dbrs4_inp, 'u_dbrs_5': dbrs5_inp,
-    #                              'u_dbrs_6': dbrs6_inp, 'u_dbrs_7': dbrs7_inp, 'u_dbrs_8': dbrs8_inp, 'u_dbrs_9': dbrs9_inp, 'u_dbrs_10': dbrs10_inp, 'u_dbrs_11': dbrs11_inp, 'u_mbrs_0': mbrs0_inp})['eps']
+    eps = engines['unet'].infer({'u_noise': noise_inp, 'u_t': t_inp, 'u_context': context_inp, 'u_dbrs_0': dbrs0_inp, 'u_dbrs_1': dbrs1_inp, 'u_dbrs_2': dbrs2_inp, 'u_dbrs_3': dbrs3_inp, 'u_dbrs_4': dbrs4_inp, 'u_dbrs_5': dbrs5_inp,
+                                 'u_dbrs_6': dbrs6_inp, 'u_dbrs_7': dbrs7_inp, 'u_dbrs_8': dbrs8_inp, 'u_dbrs_9': dbrs9_inp, 'u_dbrs_10': dbrs10_inp, 'u_dbrs_11': dbrs11_inp, 'u_mbrs_0': mbrs0_inp}, stream)['eps']
     print(eps)
 
 
@@ -99,10 +99,10 @@ def load_engines():
                                      'dbrs_9': (2, 1280, 8, 8), 'dbrs_10': (2, 1280, 8, 8), 'dbrs_11': (2, 1280, 8, 8), 'mbrs_0': (2, 1280, 8, 8)})
     unet_engine = Engine("./build/engine/unet.plan")
     unet_engine.activate()
-    unet_engine.allocate_buffers({'u_noise': (2, 4, 64, 64), 'u_t': (2,), 'u_context': (2, 77, 768), 'u_mbrs_0': (2, 1280, 8, 8), 'eps': (2, 1280, 8 ,8)})
-    # unet_engine.allocate_buffers({'u_noise': (2, 4, 64, 64), 'u_t': (2,), 'u_context': (2, 77, 768), 'u_dbrs_0': (2, 320, 64, 64), 'u_dbrs_1': (2, 320, 64, 64), 'u_dbrs_2': (2, 320, 64, 64),
-    #                                  'u_dbrs_3': (2, 320, 32, 32), 'u_dbrs_4': (2, 640, 32, 32), 'u_dbrs_5': (2, 640, 32, 32), 'u_dbrs_6': (2, 640, 16, 16), 'u_dbrs_7': (2, 1280, 16, 16), 'u_dbrs_8': (2, 1280, 16, 16),
-    #                                  'u_dbrs_9': (2, 1280, 8, 8), 'u_dbrs_10': (2, 1280, 8, 8), 'u_dbrs_11': (2, 1280, 8, 8), 'u_mbrs_0': (2, 1280, 8, 8), 'eps': (2, 1280, 8 ,8)})
+    # unet_engine.allocate_buffers({'u_noise': (2, 4, 64, 64), 'u_t': (2,), 'u_context': (2, 77, 768), 'u_mbrs_0': (2, 1280, 8, 8), 'eps': (2, 1280, 8 ,8)})
+    unet_engine.allocate_buffers({'u_noise': (2, 4, 64, 64), 'u_t': (2,), 'u_context': (2, 77, 768), 'u_dbrs_0': (2, 320, 64, 64), 'u_dbrs_1': (2, 320, 64, 64), 'u_dbrs_2': (2, 320, 64, 64),
+                                     'u_dbrs_3': (2, 320, 32, 32), 'u_dbrs_4': (2, 640, 32, 32), 'u_dbrs_5': (2, 640, 32, 32), 'u_dbrs_6': (2, 640, 16, 16), 'u_dbrs_7': (2, 1280, 16, 16), 'u_dbrs_8': (2, 1280, 16, 16),
+                                     'u_dbrs_9': (2, 1280, 8, 8), 'u_dbrs_10': (2, 1280, 8, 8), 'u_dbrs_11': (2, 1280, 8, 8), 'u_mbrs_0': (2, 1280, 8, 8), 'eps': (2, 1280, 8 ,8)})
 
     return {"clip": clip_engine, "control": control_engine, "unet": unet_engine}
 
