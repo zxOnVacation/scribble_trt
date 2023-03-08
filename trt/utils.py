@@ -59,7 +59,7 @@ class Engine():
             self.tensors[binding] = tensor
             self.buffers[binding] = cuda.DeviceView(ptr=tensor.data_ptr(), shape=shape, dtype=dtype)
 
-    def infer(self, feed_dict, stream=cuda.Stream()):
+    def infer(self, feed_dict, stream):
         start_binding, end_binding = trt_util.get_active_profile_bindings(self.context)
         # shallow copy of ordered dict
         device_buffers = copy(self.buffers)

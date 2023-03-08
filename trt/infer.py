@@ -5,7 +5,9 @@ import torch
 import einops
 import random
 from pytorch_lightning import seed_everything
+from polygraphy import cuda
 
+stream = cuda.Stream()
 input_data = np.load('./build/weights/control_input.npz')
 noise = torch.from_numpy(np.repeat(input_data['noise'], 2, axis=0)).float().cuda()  # 2 4 64 64
 hint = torch.from_numpy(np.repeat(input_data['hint'], 2, axis=0)).float().cuda()  # 2 3 512 512
@@ -44,7 +46,7 @@ def unet(embeddings, control_outs):
     dbrs10_inp = cuda.DeviceView(ptr=dbrs_10.data_ptr(), shape=dbrs_10.shape, dtype=np.float32)
     dbrs11_inp = cuda.DeviceView(ptr=dbrs_11.data_ptr(), shape=dbrs_11.shape, dtype=np.float32)
     mbrs0_inp = cuda.DeviceView(ptr=mbrs_0.data_ptr(), shape=mbrs_0.shape, dtype=np.float32)
-    eps = engines['unet'].infer({'u_noise': noise_inp, 'u_t': t_inp, 'u_context': context_inp, 'u_mbrs_0': mbrs0_inp})['eps']
+    eps = engines['unet'].infer({'u_noise': noise_inp, 'u_t': t_inp, 'u_context': context_inp, 'u_mbrs_0': mbrs0_inp}, stream)['eps']
 
     # eps = engines['unet'].infer({'u_noise': noise_inp, 'u_t': t_inp, 'u_context': context_inp, 'u_dbrs_0': dbrs0_inp, 'u_dbrs_1': dbrs1_inp, 'u_dbrs_2': dbrs2_inp, 'u_dbrs_3': dbrs3_inp, 'u_dbrs_4': dbrs4_inp, 'u_dbrs_5': dbrs5_inp,
     #                              'u_dbrs_6': dbrs6_inp, 'u_dbrs_7': dbrs7_inp, 'u_dbrs_8': dbrs8_inp, 'u_dbrs_9': dbrs9_inp, 'u_dbrs_10': dbrs10_inp, 'u_dbrs_11': dbrs11_inp, 'u_mbrs_0': mbrs0_inp})['eps']
@@ -58,7 +60,7 @@ def control(embeddings):
     hint_inp = cuda.DeviceView(ptr=hint.data_ptr(), shape=hint.shape, dtype=np.float32)
     t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
     context_inp = cuda.DeviceView(ptr=context.data_ptr(), shape=context.shape, dtype=np.float32)
-    control_out = engines['control'].infer({'noise': noise_inp, 'hint': hint_inp, 't': t_inp, 'context': context_inp})
+    control_out = engines['control'].infer({'noise': noise_inp, 'hint': hint_inp, 't': t_inp, 'context': context_inp}, stream)
     return control_out
 
 
@@ -80,7 +82,7 @@ def clip(text_a, text_b):
     tokens_b = tokenize(text_b)
     tokens = torch.cat([tokens_a, tokens_b]).int() # 牢记要转成int32 好难过
     tokens_inp = cuda.DeviceView(ptr=tokens.data_ptr(), shape=tokens.shape, dtype=np.int32)
-    embeddings = engines['clip'].infer({"tokens": tokens_inp})['embeddings']
+    embeddings = engines['clip'].infer({"tokens": tokens_inp}, stream)['embeddings']
     return embeddings # 2 77 768
 
 
