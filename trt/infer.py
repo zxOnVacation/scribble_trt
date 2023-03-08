@@ -102,7 +102,7 @@ def load_engines():
     # unet_engine.allocate_buffers({'u_noise': (2, 4, 64, 64), 'u_t': (2,), 'u_context': (2, 77, 768), 'u_mbrs_0': (2, 1280, 8, 8), 'eps': (2, 1280, 8 ,8)})
     unet_engine.allocate_buffers({'u_noise': (2, 4, 64, 64), 'u_t': (2,), 'u_context': (2, 77, 768), 'u_dbrs_0': (2, 320, 64, 64), 'u_dbrs_1': (2, 320, 64, 64), 'u_dbrs_2': (2, 320, 64, 64),
                                      'u_dbrs_3': (2, 320, 32, 32), 'u_dbrs_4': (2, 640, 32, 32), 'u_dbrs_5': (2, 640, 32, 32), 'u_dbrs_6': (2, 640, 16, 16), 'u_dbrs_7': (2, 1280, 16, 16), 'u_dbrs_8': (2, 1280, 16, 16),
-                                     'u_dbrs_9': (2, 1280, 8, 8), 'u_dbrs_10': (2, 1280, 8, 8), 'u_dbrs_11': (2, 1280, 8, 8), 'u_mbrs_0': (2, 1280, 8, 8), 'eps': (2, 1280, 8 ,8)})
+                                     'u_dbrs_9': (2, 1280, 8, 8), 'u_dbrs_10': (2, 1280, 8, 8), 'u_dbrs_11': (2, 1280, 8, 8), 'u_mbrs_0': (2, 1280, 8, 8), 'eps': (2, 1280, 16 ,16)})
 
     return {"clip": clip_engine, "control": control_engine, "unet": unet_engine}
 

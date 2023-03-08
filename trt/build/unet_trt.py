@@ -82,6 +82,16 @@ def build_network(network, para, noise, t, context, dbrs_0, dbrs_1, dbrs_2, dbrs
         c_in = network.add_elementwise(out(in_11), dbrs_11, trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)]) # 2 2560 8 8
         noise_in = build_out_0(network, para, noise_in, 0, [2560, 1280], temb, skip=True)
+    if 17: # up-2
+        c_in = network.add_elementwise(out(in_10), dbrs_10, trt.ElementWiseOperation.SUM)
+        noise_in = network.add_concatenation([out(noise_in), out(c_in)])
+        noise_in = build_out_0(network, para, noise_in, 1, [2560, 1280], temb, skip=True)
+    if 18: # up-3
+        c_in = network.add_elementwise(out(in_9), dbrs_9, trt.ElementWiseOperation.SUM)
+        noise_in = network.add_concatenation([out(noise_in), out(c_in)])
+        noise_in = build_out_0(network, para, noise_in, 2, [2560, 1280], temb, skip=True)
+        noise_in = up_trt(network, para, 2, noise_in, [1280])
+
 
 
     out(noise_in).name = 'eps'

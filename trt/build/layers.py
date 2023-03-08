@@ -52,6 +52,21 @@ def time_embedding(network, para, t):
     time_emb_1 = matrix_mul(network, time_emb_silu, para['time_embed.2.weight'], para['time_embed.2.bias'], (1280, 1280), (1, 1280)) # 1 1280
     return time_emb_1
 
+
+def up_trt(network, para, index, input_layer, ints):
+    def resize_trt():
+        for creator in trt.get_plugin_registry().plugin_creator_list:
+            if creator.name == "ResizeNearest_TRT":
+                pLists = []
+                pLists.append(trt.PluginField("scale", np.float32(2.0), trt.PluginFieldType.FLOAT32))
+                return creator.create_plugin(creator.name, trt.PluginFieldCollection(pLists))
+        return None
+    up_out = network.add_plugin_v2([out(input_layer)], resize_trt())
+    up_out = network.add_convolution(out(up_out), ints[0], (3, 3), format(para['output_blocks.%s.1.conv.weight' % index]), format(para['output_blocks.%s.1.conv.bias' % index]))  # 2 320 32 32
+    up_out.padding = (1, 1)
+    return up_out
+
+
 def ln(network, inputs, gamma_weights, beta_weights):
     def ln_plugin(epsilon=1e-5, axis=-1):
         for creator in trt.get_plugin_registry().plugin_creator_list:
