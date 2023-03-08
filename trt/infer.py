@@ -18,7 +18,7 @@ def control(embeddings):
     hint_inp = cuda.DeviceView(ptr=hint.data_ptr(), shape=hint.shape, dtype=np.float32)
     t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
     context_inp = cuda.DeviceView(ptr=context.data_ptr(), shape=context.shape, dtype=np.float32)
-    dbrs_1 = engines['control'].infer({'noise': noise_inp, 'hint': hint_inp, 't': t_inp, 'context': context_inp})['dbrs_1']
+    dbrs_1 = engines['control'].infer({'noise': noise_inp, 'hint': hint_inp, 't': t_inp, 'context': context_inp})['dbrs_2']
     print(dbrs_1)
 
 
@@ -51,7 +51,7 @@ def load_engines():
     control_engine = Engine("./build/engine/control.plan")
     control_engine.activate()
     control_engine.allocate_buffers({'noise': (2, 4, 64, 64), 'hint': (2, 3, 512, 512), 't': (2,), 'context': (2, 77, 768),
-                                     'dbrs_0': (2, 320, 64, 64), 'dbrs_1': (2, 4096, 320)})
+                                     'dbrs_0': (2, 320, 64, 64), 'dbrs_1': (2, 320, 64, 64), 'dbrs_2': (2, 320, 64, 64)})
 
     return {"clip": clip_engine, "control": control_engine}
 

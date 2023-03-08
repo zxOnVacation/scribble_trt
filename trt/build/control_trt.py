@@ -232,8 +232,12 @@ def build_in_1(network, para, in_layer, index, ints, context):
     ### slef-attention
     noise_in = self_attn(network, para, noise_in, index, [320])
     noise_in = cross_attn(network, para, noise_in, index, [320], context)
-    noise_in = ffn(network, para, noise_in, index, [320])
-
+    noise_in = ffn(network, para, noise_in, index, [320]) # 2 4096 320
+    noise_in = network.add_shuffle(out(noise_in))
+    noise_in.first_transpose = (0, 2, 1)
+    noise_in.reshape_dims = (2, 320, 64, 64)
+    noise_in = network.add_convolution(out(noise_in), 320, (1, 1), format(para['input_blocks.%s.1.proj_out.weight' % index]), format(para['input_blocks.%s.1.proj_out.bias' % index])) # 2 320 64 64
+    noise_in = network.add_elementwise(out(noise_in), out(in_layer), trt.ElementWiseOperation.SUM) # 2 320 64 64
     return noise_in
 
 
@@ -257,8 +261,31 @@ def build_network(network, para, noise, hint, t, context):
     if 2:
         # 第二层
         noise_in = build_in_0(network, para, noise_in, 1, [320, 320], temb) # 2 320 64 64
-        noise_in = build_in_1(network, para, noise_in, 1, [320, 320], context)
+        noise_in = build_in_1(network, para, noise_in, 1, [320, 320], context) # 2 320 64 64
+        out_1 = network.add_convolution(out(noise_in), 320, (1, 1), format(para['zero_convs.1.0.weight']), format(para['zero_convs.1.0.bias']))  # 2 320 64 64
+        out(out_1).name = 'dbrs_1'
+        network.mark_output(out(out_1))
+    if 3:
+        # 第三层
+        noise_in = build_in_0(network, para, noise_in, 2, [320, 320], temb) # 2 320 64 64
+        noise_in = build_in_1(network, para, noise_in, 2, [320, 320], context) # 2 320 64 64
+        out_2 = network.add_convolution(out(noise_in), 320, (1, 1), format(para['zero_convs.2.0.weight']), format(para['zero_convs.2.0.bias']))  # 2 320 64 64
+        out(out_2).name = 'dbrs_2'
+        network.mark_output(out(out_2))
+    if 4:
+        # 第四层
+
+
+
+
+
+
+
+
         out(noise_in).name = 'dbrs_1'
+
+
+
         network.mark_output(out(noise_in))
     return network
 
