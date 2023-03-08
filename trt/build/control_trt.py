@@ -333,7 +333,7 @@ def build_network(network, para, noise, hint, t, context):
         network.mark_output(out(out_10))
     if 12:
         # 第12层
-        noise_in = build_in_0(network, para, noise_in, 10, [1280, 1280], temb, skip=False)  # 2 320 64 64
+        noise_in = build_in_0(network, para, noise_in, 11, [1280, 1280], temb, skip=False)  # 2 320 64 64
         out_11 = network.add_convolution(out(noise_in), 1280, (1, 1), format(para['zero_convs.11.0.weight']), format(para['zero_convs.11.0.bias']))  # 2 320 64 64
         out(out_11).name = 'dbrs_11'
         network.mark_output(out(out_11))
