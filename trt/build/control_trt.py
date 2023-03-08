@@ -113,7 +113,7 @@ def hint_block(network, para, hint, temb, context):
 def out(layer, i=0):
     return layer.get_output(i)
 
-def ffn(network, para, input_layer, index):
+def ffn(network, para, input_layer, index, ints):
     def geglu():
         for creator in trt.get_plugin_registry().plugin_creator_list:
             if creator.name == "SplitGeLU":
@@ -121,7 +121,10 @@ def ffn(network, para, input_layer, index):
                 return creator.create_plugin(creator.name, trt.PluginFieldCollection(pLists))
         return None
     noise_in = ln(network, input_layer, para['input_blocks.%s.1.transformer_blocks.0.norm3.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.norm3.bias' % index])  # 2 4096 320
-    noise_in = network.add_plugin_v2([out(noise_in)], geglu())
+    noise_in = matrix_mul(network, noise_in, para['input_blocks.%s.1.transformer_blocks.0.ff.net.0.proj.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.ff.net.0.proj.bias' % index], (1, ints[0], ints[0]*8), (1, 1, ints[0]*8))
+    noise_in = network.add_plugin_v2([out(noise_in)], geglu()) # 2 4096 1280
+    noise_in = matrix_mul(network, noise_in, para['input_blocks.%s.1.transformer_blocks.0.ff.net.2.weight' % index], para['input_blocks.%s.1.transformer_blocks.0.ff.net.2.bias' % index], (1, ints[0]*4, ints[0]), (1, 1, ints[0])) # 2 4096 320
+    noise_in = network.add_elementwise(out(noise_in), out(input_layer), trt.ElementWiseOperation.SUM)
     return noise_in
 
 def cross_attn(network, para, input_layer, index, ints, context):
@@ -229,7 +232,7 @@ def build_in_1(network, para, in_layer, index, ints, context):
     ### slef-attention
     noise_in = self_attn(network, para, noise_in, index, [320])
     noise_in = cross_attn(network, para, noise_in, index, [320], context)
-    noise_in = ffn(network, para, noise_in, index)
+    noise_in = ffn(network, para, noise_in, index, [320])
 
     return noise_in
 
