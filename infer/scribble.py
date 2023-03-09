@@ -97,7 +97,8 @@ class Scribble():
         return control_out
 
     def unet_infer(self, noise, t, context, c):
-        print(c)
+        print(c['dbrs_0'])
+        print(c['dbrs_0'].shape)
         noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
         t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
         context_inp = cuda.DeviceView(ptr=context.data_ptr(), shape=context.shape, dtype=np.float32)
