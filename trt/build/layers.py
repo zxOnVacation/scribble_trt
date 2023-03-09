@@ -53,7 +53,7 @@ def time_embedding(network, para, t):
     return time_emb_1
 
 
-def up_trt(network, para, index, input_layer, ints):
+def up_trt(network, para, index, input_layer, ints, vae=False):
     def resize_trt():
         for creator in trt.get_plugin_registry().plugin_creator_list:
             if creator.name == "ResizeNearest_TRT":
@@ -62,10 +62,13 @@ def up_trt(network, para, index, input_layer, ints):
                 return creator.create_plugin(creator.name, trt.PluginFieldCollection(pLists))
         return None
     up_out = network.add_plugin_v2([out(input_layer)], resize_trt())
-    if index == 2:
-        up_out = network.add_convolution(out(up_out), ints[0], (3, 3), format(para['output_blocks.%s.1.conv.weight' % index]), format(para['output_blocks.%s.1.conv.bias' % index]))  # 2 320 32 32
+    if vae:
+        up_out = network.add_convolution(out(up_out), ints[0], (3, 3), format(para['decoder.up.%s.upsample.conv.weight' % index]), format(para['decoder.up.%s.upsample.conv.bias' % index]))
     else:
-        up_out = network.add_convolution(out(up_out), ints[0], (3, 3), format(para['output_blocks.%s.2.conv.weight' % index]), format(para['output_blocks.%s.2.conv.bias' % index]))  # 2 320 32 32
+        if index == 2:
+            up_out = network.add_convolution(out(up_out), ints[0], (3, 3), format(para['output_blocks.%s.1.conv.weight' % index]), format(para['output_blocks.%s.1.conv.bias' % index]))  # 2 320 32 32
+        else:
+            up_out = network.add_convolution(out(up_out), ints[0], (3, 3), format(para['output_blocks.%s.2.conv.weight' % index]), format(para['output_blocks.%s.2.conv.bias' % index]))  # 2 320 32 32
     up_out.padding = (1, 1)
     return up_out
 
@@ -372,6 +375,18 @@ def vae_mid_res(network, para, in_layer, index, ints, skip=False, prefix='mid.')
     sample.padding = (1, 1)  # 1 512 64 64
     sample = gn(network, sample, para["decoder." + prefix + "block_%s.norm2.weight" % index], para["decoder." + prefix + "block_%s.norm2.bias" % index], epsilon=1e-6, bSwish=1)
     sample = network.add_convolution(out(sample), ints[1], (3, 3), format(para["decoder." + prefix + "block_%s.conv2.weight" % index]), format(para["decoder." + prefix + "block_%s.conv2.bias" % index]))
+    sample.padding = (1, 1)  # 1 512 64 64
+    if skip:
+        in_layer = network.add_convolution(out(in_layer), ints[1], (1, 1), format(para["output_blocks.%s.0.skip_connection.weight" % index]), format(para["output_blocks.%s.0.skip_connection.bias" % index]))
+    sample = network.add_elementwise(out(in_layer), out(sample), trt.ElementWiseOperation.SUM)
+    return sample
+
+def vae_up_res(network, para, in_layer, index, inner, ints, skip=False, ):
+    sample = gn(network, in_layer, para["decoder.up.%s.block.%s.norm1.weight" % (index, inner)], para["decoder.up.%s.block.%s.norm1.bias" % (index, inner)], epsilon=1e-6, bSwish=1)
+    sample = network.add_convolution(out(sample), ints[1], (3, 3), format(para["decoder.up.%s.block.%s.conv1.weight" % (index, inner)]), format(para["decoder.up.%s.block.%s.conv1.bias" % (index, inner)]))
+    sample.padding = (1, 1)  # 1 512 64 64
+    sample = gn(network, sample, para["decoder.up.%s.block.%s.norm2.weight" % (index, inner)], para["decoder.up.%s.block.%s.norm2.bias" % (index, inner)], epsilon=1e-6, bSwish=1)
+    sample = network.add_convolution(out(sample), ints[1], (3, 3), format(para["decoder.up.%s.block.%s.conv2.weight" % (index, inner)]), format(para["decoder.up.%s.block.%s.conv2.bias" % (index, inner)]))
     sample.padding = (1, 1)  # 1 512 64 64
     if skip:
         in_layer = network.add_convolution(out(in_layer), ints[1], (1, 1), format(para["output_blocks.%s.0.skip_connection.weight" % index]), format(para["output_blocks.%s.0.skip_connection.bias" % index]))

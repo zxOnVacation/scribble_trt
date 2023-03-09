@@ -109,7 +109,7 @@ def load_engines():
                                      'u_dbrs_9': (2, 1280, 8, 8), 'u_dbrs_10': (2, 1280, 8, 8), 'u_dbrs_11': (2, 1280, 8, 8), 'u_mbrs_0': (2, 1280, 8, 8), 'eps': (2, 4, 64, 64)})
     vae_engine = Engine("./build/engine/vae.plan")
     vae_engine.activate()
-    vae_engine.allocate_buffers({'sample': (1, 4, 64, 64), 'decode_img': (1, 512, 64, 64)})
+    vae_engine.allocate_buffers({'sample': (1, 4, 64, 64), 'decode_img': (1, 512, 128, 128)})
     return {"clip": clip_engine, "control": control_engine, "unet": unet_engine, "vae": vae_engine}
 
 

@@ -30,6 +30,14 @@ def build_network(network, para, sample):
         sample = vae_mid_res(network, para, sample, 1, [512, 512])
     if 2: # mid-2
         sample = vae_mid_attn(network, para, sample, 1, [512, 512])
+    if 3: # mid-3
+        sample = vae_mid_res(network, para, sample, 2, [512, 512])
+    if 4: # up-1
+        sample = vae_up_res(network, para, sample, 3, 0, [512, 512])
+        sample = vae_up_res(network, para, sample, 3, 1, [512, 512])
+        sample = vae_up_res(network, para, sample, 3, 2, [512, 512])
+        sample = up_trt(network, para, 3, sample, [512], vae=True)
+
 
     out(sample).name = 'decode_img'
     network.mark_output(out(sample))
