@@ -351,19 +351,16 @@ def vae_mid_attn(network, para, in_layer, index, ints):
     q.second_transpose = (0, 2, 1) # 1 4096 512
     k = network.add_shuffle(out(k))
     k.reshape_dims = (1, 512, 4096)
-    k.second_transpose = (0, 2, 1) # 1 4096 512
     v = network.add_shuffle(out(v))
     v.reshape_dims = (1, 512, 4096)
-    v.second_transpose = (0, 2, 1) # 1 4096 512
-    qk = network.add_matrix_multiply(out(q), trt.MatrixOperation.NONE, out(k), trt.MatrixOperation.TRANSPOSE) # 1 4096 4096
-    qk_scale = network.add_constant((1, 1, 1), format(np.array(1 / math.sqrt(512), dtype=np.float32)))
+    qk = network.add_matrix_multiply(out(q), trt.MatrixOperation.NONE, out(k), trt.MatrixOperation.NONE) # 1 4096 4096
+    qk_scale = network.add_constant((1, 1, 1), format(np.array([512**(-0.5)], dtype=np.float32)))
     qk = network.add_elementwise(out(qk), out(qk_scale), trt.ElementWiseOperation.PROD) # 1 4096 4096
     qk = network.add_softmax(out(qk)) # 1 4096 4096
     qk = network.add_shuffle(out(qk))
     qk.first_transpose = (0, 2, 1)
-    v = network.add_matrix_multiply(out(qk), trt.MatrixOperation.NONE, out(v), trt.MatrixOperation.NONE) # 1 4095 512
+    v = network.add_matrix_multiply(out(v), trt.MatrixOperation.NONE, out(v), trt.MatrixOperation.NONE) # 1 512 4096
     v = network.add_shuffle(out(v))
-    v.first_transpose = (0, 2, 1)
     v.reshape_dims = (1, 512, 64, 64)
     sample = network.add_convolution(out(v), ints[1], (1, 1), format(para["decoder.mid.attn_1.proj_out.weight"]), format(para["decoder.mid.attn_1.proj_out.bias"])) # 1 512 64 64
     sample = network.add_elementwise(out(sample), out(in_layer), trt.ElementWiseOperation.SUM)
