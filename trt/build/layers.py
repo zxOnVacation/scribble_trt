@@ -340,7 +340,33 @@ def build_out_1(network, para, in_layer, index, ints, context, hw):
     noise_in = network.add_elementwise(out(noise_in), out(in_layer), trt.ElementWiseOperation.SUM) # 2 320 64 64
     return noise_in
 
-def vae_res(network, para, in_layer, index, ints, skip=False, prefix='mid.'):
+def vae_mid_attn(network, para, in_layer, index, ints):
+    sample = gn(network, in_layer, para["decoder.mid.attn_%s.norm.weight" % index], para["decoder.mid.attn_%s.norm.bias" % index], epsilon=1e-6, bSwish=0) # 1 512 64 64
+    q = network.add_convolution(out(sample), ints[1], (1, 1), format(para["decoder.mid.attn_1.q.weight"]), format(para["decoder.mid.attn_1.q.bias"])) # 1 512 64 64
+    k = network.add_convolution(out(sample), ints[1], (1, 1), format(para["decoder.mid.attn_1.k.weight"]), format(para["decoder.mid.attn_1.k.bias"])) # 1 512 64 64
+    v = network.add_convolution(out(sample), ints[1], (1, 1), format(para["decoder.mid.attn_1.v.weight"]), format(para["decoder.mid.attn_1.v.bias"])) # 1 512 64 64
+    q = network.add_shuffle(out(q))
+    q.reshape_dims = (1, 512, 4096)
+    q.second_transpose = (0, 2, 1) # 1 4096 512
+    k = network.add_shuffle(out(k))
+    k.reshape_dims = (1, 512, 4096)
+    k.second_transpose = (0, 2, 1) # 1 4096 512
+    v = network.add_shuffle(out(v))
+    v.reshape_dims = (1, 512, 4096)
+    v.second_transpose = (0, 2, 1) # 1 4096 512
+    qk = network.add_matrix_multiply(out(q), trt.MatrixOperation.NONE, out(k), trt.MatrixOperation.TRANSPOSE) # 1 4096 4096
+    qk_scale = network.add_constant((1, 1, 1), format(np.array(1 / math.sqrt(512), dtype=np.float32)))
+    qk = network.add_elementwise(out(qk), out(qk_scale), trt.ElementWiseOperation.PROD) # 1 4096 4096
+    qk = network.add_softmax(out(qk)) # 1 4096 4096
+    v = network.add_matrix_multiply(out(qk), trt.MatrixOperation.NONE, out(v), trt.MatrixOperation.NONE) # 1 4095 512
+    v = network.add_shuffle(out(v))
+    v.first_transpose = (0, 2, 1)
+    v.reshape_dims = (1, 512, 64, 64)
+    sample = network.add_convolution(out(v), ints[1], (1, 1), format(para["decoder.mid.attn_1.proj_out.weight"]), format(para["decoder.mid.attn_1.proj_out.bias"])) # 1 512 64 64
+    sample = network.add_elementwise(out(sample), out(in_layer), trt.ElementWiseOperation.SUM)
+    return sample
+
+def vae_mid_res(network, para, in_layer, index, ints, skip=False, prefix='mid.'):
     sample = gn(network, in_layer, para["decoder." + prefix + "block_%s.norm1.weight" % index], para["decoder." + prefix + "block_%s.norm1.bias" % index], epsilon=1e-6, bSwish=1)
     sample = network.add_convolution(out(sample), ints[1], (3, 3), format(para["decoder." + prefix + "block_%s.conv1.weight" % index]), format(para["decoder." + prefix + "block_%s.conv1.bias" % index]))
     sample.padding = (1, 1)  # 1 512 64 64

@@ -27,7 +27,9 @@ def build_network(network, para, sample):
     sample.padding = (1, 1)
 
     if 1: # mid-1
-        sample = vae_res(network, para, sample, 1, [512, 512])
+        sample = vae_mid_res(network, para, sample, 1, [512, 512])
+    if 2: # mid-2
+        sample = vae_mid_attn(network, para, sample, 1, [512, 512])
 
     out(sample).name = 'decode_img'
     network.mark_output(out(sample))
