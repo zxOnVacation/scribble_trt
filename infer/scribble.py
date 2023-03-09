@@ -7,7 +7,7 @@ from PIL import Image
 import einops
 import random
 import tensorrt as trt
-from diffusers import DPMSolverMultistepScheduler
+from diffusers import UniPCMultistepScheduler
 
 
 class Scribble():
@@ -15,7 +15,7 @@ class Scribble():
         self.engine_dir = engine_dir
         self.stream = cuda.Stream()
         self.load_engines()
-        self.scheduler = DPMSolverMultistepScheduler()
+        self.scheduler = UniPCMultistepScheduler()
         self.device = 'cuda'
         self.dtype = torch.float32
 
@@ -140,6 +140,7 @@ class Scribble():
             latents = latents * self.scheduler.init_noise_sigma
             torch.cuda.synchronize()
             for step_index, timestep in enumerate(self.scheduler.timesteps):
+                print(timestep)
                 latent_model_input = torch.cat([latents] * 2)
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, step_index)
                 timestep_input = torch.tensor([timestep.float(), timestep.float()]).to(self.device)
