@@ -140,13 +140,13 @@ class Scribble():
             latents = latents * self.scheduler.init_noise_sigma
             torch.cuda.synchronize()
             for step_index, timestep in enumerate(self.scheduler.timesteps):
-                print(timestep)
                 latent_model_input = torch.cat([latents] * 2)
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, step_index)
                 timestep_input = torch.tensor([timestep.float(), timestep.float()]).to(self.device)
                 control_input = torch.cat([control] * 2)
                 control_outs = self.control_infer(latent_model_input, control_input, timestep_input, embeddings)
                 eps = self.unet_infer(latent_model_input, timestep_input, embeddings, control_outs)
+                print(eps)
                 noise_pred_uncond, noise_pred_text = eps.chunk(2)
                 noise_pred = noise_pred_uncond + scale * (noise_pred_text - noise_pred_uncond)
                 latents = self.scheduler.step(noise_pred, timestep, latents, return_dict=False)[0]
@@ -160,7 +160,7 @@ if __name__ == '__main__':
     img = entry.infer(prompts="hot air balloon, best quality, extremely detailed, sunset, beach",
                       neg_prompts="longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
                       control="../src/test_imgs/user_3.png",
-                      steps=50)
+                      steps=10)
     img = img.detach().cpu().numpy().astype(np.uint8)
     print(img)
     img = Image.fromarray(img)
