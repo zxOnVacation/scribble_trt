@@ -140,6 +140,7 @@ class Scribble():
             for step_index, timestep in enumerate(self.scheduler.timesteps):
                 latent_model_input = torch.cat([latents] * 2)
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, step_index)
+                print(timestep)
                 timestep_input = torch.cat([timestep.float()] * 2)
                 control_input = torch.cat([control] * 2)
                 control_outs = self.control_infer(latent_model_input, control_input, timestep_input, embeddings)
