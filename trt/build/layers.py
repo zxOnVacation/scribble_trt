@@ -356,6 +356,7 @@ def vae_mid_attn(network, para, in_layer, index, ints):
     qk_scale = network.add_constant((1, 1, 1), format(np.array([512**(-0.5)], dtype=np.float32)))
     qk = network.add_elementwise(out(qk), out(qk_scale), trt.ElementWiseOperation.PROD) # 1 4096 4096
     qk = network.add_softmax(out(qk)) # 1 4096 4096
+    qk.axes = 1 << 2
     qk = network.add_shuffle(out(qk))
     qk.first_transpose = (0, 2, 1)
     v = network.add_matrix_multiply(out(v), trt.MatrixOperation.NONE, out(qk), trt.MatrixOperation.NONE) # 1 512 4096
