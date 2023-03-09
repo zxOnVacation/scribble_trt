@@ -22,9 +22,9 @@ from layers import *
 def build_network(network, para, sample):
     scale = network.add_constant((1, 1, 1, 1), format(np.array(1 / 0.18215, dtype=np.float32)))
     sample = network.add_elementwise(sample, out(scale), trt.ElementWiseOperation.SUM) # * 1/0.18215
-    sample = network.add_convolution(out(sample), 4, (1, 1), format(para["post_quant_conv.weight"]), format(para["post_quant_conv.bias"])) #post_conv
-    sample = network.add_convolution(out(sample), 512, (3, 3), format(para["decoder.conv_in.weight"]), format(para["decoder.conv_in.bias"]))
-    sample.padding = (1, 1)
+    # sample = network.add_convolution(out(sample), 4, (1, 1), format(para["post_quant_conv.weight"]), format(para["post_quant_conv.bias"])) #post_conv
+    # sample = network.add_convolution(out(sample), 512, (3, 3), format(para["decoder.conv_in.weight"]), format(para["decoder.conv_in.bias"]))
+    # sample.padding = (1, 1)
 
     # if 1: # mid-1
     #     sample = vae_res(network, para, sample, 1, [512, 512])
