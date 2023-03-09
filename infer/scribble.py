@@ -1,4 +1,6 @@
 import os
+import time
+
 import torch
 from utils import *
 from PIL import Image
@@ -97,8 +99,6 @@ class Scribble():
         return control_out
 
     def unet_infer(self, noise, t, context, c):
-        print(c['dbrs_0'])
-        print(c['dbrs_0'].shape)
         noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
         t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
         context_inp = cuda.DeviceView(ptr=context.data_ptr(), shape=context.shape, dtype=np.float32)
@@ -145,6 +145,9 @@ class Scribble():
                 timestep_input = torch.tensor([timestep.float(), timestep.float()])
                 control_input = torch.cat([control] * 2)
                 control_outs = self.control_infer(latent_model_input, control_input, timestep_input, embeddings)
+                print(control_outs['mbrs_0'])
+                print(control_outs['mbrs_0'].shape)
+                time.sleep(6000)
                 eps = self.unet_infer(latent_model_input, timestep_input, embeddings, control_outs)
                 noise_pred_uncond, noise_pred_text = eps.chunk(2)
                 noise_pred = noise_pred_uncond + scale * (noise_pred_text - noise_pred_uncond)
