@@ -99,6 +99,7 @@ class Scribble():
         print(context.shape)
         print(t)
         print(t.shape)
+        time.sleep(60000)
         noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
         hint_inp = cuda.DeviceView(ptr=hint.data_ptr(), shape=hint.shape, dtype=np.float32)
         t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
