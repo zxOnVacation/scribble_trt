@@ -341,6 +341,7 @@ def build_out_1(network, para, in_layer, index, ints, context, hw):
     return noise_in
 
 def vae_mid_attn(network, para, in_layer, index, ints):
+    return in_layer
     sample = gn(network, in_layer, para["decoder.mid.attn_%s.norm.weight" % index], para["decoder.mid.attn_%s.norm.bias" % index], epsilon=1e-6, bSwish=0) # 1 512 64 64
     q = network.add_convolution(out(sample), ints[1], (1, 1), format(para["decoder.mid.attn_1.q.weight"]), format(para["decoder.mid.attn_1.q.bias"])) # 1 512 64 64
     k = network.add_convolution(out(sample), ints[1], (1, 1), format(para["decoder.mid.attn_1.k.weight"]), format(para["decoder.mid.attn_1.k.bias"])) # 1 512 64 64
