@@ -127,7 +127,6 @@ def hint_block(network, para, hint, temb, context):
     hint_in.padding = (1, 1)
     return hint_in
 
-
 def out(layer, i=0):
     return layer.get_output(i)
 
@@ -340,6 +339,18 @@ def build_out_1(network, para, in_layer, index, ints, context, hw):
     noise_in = network.add_convolution(out(noise_in), ints[1], (1, 1), format(para['output_blocks.%s.1.proj_out.weight' % index]), format(para['output_blocks.%s.1.proj_out.bias' % index])) # 2 320 64 64
     noise_in = network.add_elementwise(out(noise_in), out(in_layer), trt.ElementWiseOperation.SUM) # 2 320 64 64
     return noise_in
+
+def vae_res(network, para, in_layer, index, ints, skip=False, prefix='mid.'):
+    sample = gn(network, in_layer, para["decoder." + prefix + "block_%s.norm1.weight" % index], para["decoder." + prefix + "block_%s.norm1.bias" % index], epsilon=1e-6, bSwish=1)
+    sample = network.add_convolution(out(sample), ints[1], (3, 3), format(para["decoder." + prefix + "block_%s.conv1.weight" % index]), format(para["decoder." + prefix + "block_%s.conv1.bias" % index]))
+    sample.padding = (1, 1)  # 1 512 64 64
+    sample = gn(network, sample, para["decoder." + prefix + "block_%s.norm2.weight" % index], para["decoder." + prefix + "block_%s.norm2.bias" % index], epsilon=1e-6, bSwish=1)
+    sample = network.add_convolution(out(sample), ints[1], (3, 3), format(para["decoder." + prefix + "block_%s.conv2.weight" % index]), format(para["decoder." + prefix + "block_%s.conv2.bias" % index]))
+    sample.padding = (1, 1)  # 1 512 64 64
+    if skip:
+        in_layer = network.add_convolution(out(in_layer), ints[1], (1, 1), format(para["output_blocks.%s.0.skip_connection.weight" % index]), format(para["output_blocks.%s.0.skip_connection.bias" % index]))
+    sample = network.add_elementwise(out(in_layer), out(sample), trt.ElementWiseOperation.SUM)
+    return sample
 
 # build input第一阶段
 def build_out_0(network, para, in_layer, index, ints, temb, skip=False):

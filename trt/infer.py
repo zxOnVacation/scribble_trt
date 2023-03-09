@@ -12,6 +12,7 @@ input_data = np.load('./build/weights/control_input.npz')
 noise = torch.from_numpy(np.repeat(input_data['noise'], 2, axis=0)).float().cuda()  # 2 4 64 64
 hint = torch.from_numpy(np.repeat(input_data['hint'], 2, axis=0)).float().cuda()  # 2 3 512 512
 t = torch.from_numpy(np.repeat(input_data['t'], 2, axis=0)).float().cuda()  # 2
+sample = torch.from_numpy(np.load('./build/weights/vae_input.npz')['sample']).float().cuda()
 
 
 def unet(embeddings, control_outs):
@@ -46,11 +47,11 @@ def unet(embeddings, control_outs):
     dbrs10_inp = cuda.DeviceView(ptr=dbrs_10.data_ptr(), shape=dbrs_10.shape, dtype=np.float32)
     dbrs11_inp = cuda.DeviceView(ptr=dbrs_11.data_ptr(), shape=dbrs_11.shape, dtype=np.float32)
     mbrs0_inp = cuda.DeviceView(ptr=mbrs_0.data_ptr(), shape=mbrs_0.shape, dtype=np.float32)
-    # eps = engines['unet'].infer({'u_noise': noise_inp, 'u_t': t_inp, 'u_context': context_inp, 'u_mbrs_0': mbrs0_inp}, stream)['eps']
-
     eps = engines['unet'].infer({'u_noise': noise_inp, 'u_t': t_inp, 'u_context': context_inp, 'u_dbrs_0': dbrs0_inp, 'u_dbrs_1': dbrs1_inp, 'u_dbrs_2': dbrs2_inp, 'u_dbrs_3': dbrs3_inp, 'u_dbrs_4': dbrs4_inp, 'u_dbrs_5': dbrs5_inp,
                                  'u_dbrs_6': dbrs6_inp, 'u_dbrs_7': dbrs7_inp, 'u_dbrs_8': dbrs8_inp, 'u_dbrs_9': dbrs9_inp, 'u_dbrs_10': dbrs10_inp, 'u_dbrs_11': dbrs11_inp, 'u_mbrs_0': mbrs0_inp}, stream)['eps']
-    print(eps)
+    model_t, model_uncond = eps.chunk(2)
+    model_output = model_uncond + 9.0 * (model_t - model_uncond)
+
 
 
 def control(embeddings):
@@ -62,9 +63,6 @@ def control(embeddings):
     context_inp = cuda.DeviceView(ptr=context.data_ptr(), shape=context.shape, dtype=np.float32)
     control_out = engines['control'].infer({'noise': noise_inp, 'hint': hint_inp, 't': t_inp, 'context': context_inp}, stream)
     return control_out
-
-
-
 
 def pre_img(img_path):
     c_img = np.array(Image.open(img_path))
@@ -86,6 +84,13 @@ def clip(text_a, text_b):
     return embeddings # 2 77 768
 
 
+def vae(sample):
+    sample_inp = cuda.DeviceView(ptr=sample.data_ptr(), shape=sample.shape, dtype=np.float32)
+    decode_img = engines['vae'].infer({"sample": sample_inp}, stream)['decode_img']
+    print(decode_img)
+
+
+
 def load_engines():
     clip_engine = Engine("./build/engine/clip.plan")
     clip_engine.activate()
@@ -99,12 +104,13 @@ def load_engines():
                                      'dbrs_9': (2, 1280, 8, 8), 'dbrs_10': (2, 1280, 8, 8), 'dbrs_11': (2, 1280, 8, 8), 'mbrs_0': (2, 1280, 8, 8)})
     unet_engine = Engine("./build/engine/unet.plan")
     unet_engine.activate()
-    # unet_engine.allocate_buffers({'u_noise': (2, 4, 64, 64), 'u_t': (2,), 'u_context': (2, 77, 768), 'u_mbrs_0': (2, 1280, 8, 8), 'eps': (2, 1280, 8 ,8)})
     unet_engine.allocate_buffers({'u_noise': (2, 4, 64, 64), 'u_t': (2,), 'u_context': (2, 77, 768), 'u_dbrs_0': (2, 320, 64, 64), 'u_dbrs_1': (2, 320, 64, 64), 'u_dbrs_2': (2, 320, 64, 64),
                                      'u_dbrs_3': (2, 320, 32, 32), 'u_dbrs_4': (2, 640, 32, 32), 'u_dbrs_5': (2, 640, 32, 32), 'u_dbrs_6': (2, 640, 16, 16), 'u_dbrs_7': (2, 1280, 16, 16), 'u_dbrs_8': (2, 1280, 16, 16),
                                      'u_dbrs_9': (2, 1280, 8, 8), 'u_dbrs_10': (2, 1280, 8, 8), 'u_dbrs_11': (2, 1280, 8, 8), 'u_mbrs_0': (2, 1280, 8, 8), 'eps': (2, 4, 64, 64)})
-
-    return {"clip": clip_engine, "control": control_engine, "unet": unet_engine}
+    vae_engine = Engine("./build/engine/vae.plan")
+    vae_engine.activate()
+    vae_engine.allocate_buffers({'sample': (1, 4, 64, 64), 'decode_img': (1, 3, 512, 512)})
+    return {"clip": clip_engine, "control": control_engine, "unet": unet_engine, "vae": vae_engine}
 
 
 
@@ -120,6 +126,7 @@ if __name__ == '__main__':
     if seed == -1:
         seed = random.randint(0, 65535)
     seed_everything(seed)
-    embeddings = clip(prompt, neg_prompt)
-    control_outs = control(embeddings)
-    unet(embeddings, control_outs)
+    # embeddings = clip(prompt, neg_prompt)
+    # control_outs = control(embeddings)
+    # unet(embeddings, control_outs)
+    vae(sample)
