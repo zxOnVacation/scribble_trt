@@ -160,5 +160,5 @@ if __name__ == '__main__':
                       neg_prompts="longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
                       control="../src/test_imgs/user_3.png",)
 
-    img = Image.fromarray(img)
+    img = Image.fromarray(img.detach().cpu().numpy())
     img.save("out.jpg")
