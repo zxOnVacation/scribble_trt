@@ -26,8 +26,8 @@ def build_network(network, para, sample):
     sample = network.add_convolution(out(sample), 512, (3, 3), format(para["decoder.conv_in.weight"]), format(para["decoder.conv_in.bias"]))
     sample.padding = (1, 1)
 
-    if 1: # mid-1
-        sample = vae_res(network, para, sample, 1, [512, 512])
+    # if 1: # mid-1
+    #     sample = vae_res(network, para, sample, 1, [512, 512])
 
     out(sample).name = 'decode_img'
     network.mark_output(out(sample))
