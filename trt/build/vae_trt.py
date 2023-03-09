@@ -37,7 +37,24 @@ def build_network(network, para, sample):
         sample = vae_up_res(network, para, sample, 3, 1, [512, 512])
         sample = vae_up_res(network, para, sample, 3, 2, [512, 512])
         sample = up_trt(network, para, 3, sample, [512], vae=True)
-
+    if 5: # up-2
+        sample = vae_up_res(network, para, sample, 2, 0, [512, 512])
+        sample = vae_up_res(network, para, sample, 2, 1, [512, 512])
+        sample = vae_up_res(network, para, sample, 2, 2, [512, 512])
+        sample = up_trt(network, para, 2, sample, [512], vae=True)
+    if 6: # up-3
+        sample = vae_up_res(network, para, sample, 1, 0, [512, 256], skip=True)
+        sample = vae_up_res(network, para, sample, 1, 1, [256, 256])
+        sample = vae_up_res(network, para, sample, 1, 2, [256, 256])
+        sample = up_trt(network, para, 1, sample, [256], vae=True)
+    if 7:
+        sample = vae_up_res(network, para, sample, 0, 0, [256, 128], skip=True)
+        sample = vae_up_res(network, para, sample, 0, 1, [128, 128])
+        sample = vae_up_res(network, para, sample, 0, 2, [128, 128]) # 1 128 512 512
+    if 8: # last
+        sample = gn(network, sample, para['decoder.norm_out.weight'], para['decoder.norm_out.bias'], epsilon=1e-6, bSwish=1)
+        sample = network.add_convolution(out(sample), 3, (3, 3), format(para["decoder.conv_out.weight"]), format(para["decoder.conv_out.bias"]))
+        sample.padding = (1, 1)
 
     out(sample).name = 'decode_img'
     network.mark_output(out(sample))

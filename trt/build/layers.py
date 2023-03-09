@@ -381,7 +381,7 @@ def vae_mid_res(network, para, in_layer, index, ints, skip=False, prefix='mid.')
     sample = network.add_elementwise(out(in_layer), out(sample), trt.ElementWiseOperation.SUM)
     return sample
 
-def vae_up_res(network, para, in_layer, index, inner, ints, skip=False, ):
+def vae_up_res(network, para, in_layer, index, inner, ints, skip=False):
     sample = gn(network, in_layer, para["decoder.up.%s.block.%s.norm1.weight" % (index, inner)], para["decoder.up.%s.block.%s.norm1.bias" % (index, inner)], epsilon=1e-6, bSwish=1)
     sample = network.add_convolution(out(sample), ints[1], (3, 3), format(para["decoder.up.%s.block.%s.conv1.weight" % (index, inner)]), format(para["decoder.up.%s.block.%s.conv1.bias" % (index, inner)]))
     sample.padding = (1, 1)  # 1 512 64 64
@@ -389,7 +389,7 @@ def vae_up_res(network, para, in_layer, index, inner, ints, skip=False, ):
     sample = network.add_convolution(out(sample), ints[1], (3, 3), format(para["decoder.up.%s.block.%s.conv2.weight" % (index, inner)]), format(para["decoder.up.%s.block.%s.conv2.bias" % (index, inner)]))
     sample.padding = (1, 1)  # 1 512 64 64
     if skip:
-        in_layer = network.add_convolution(out(in_layer), ints[1], (1, 1), format(para["output_blocks.%s.0.skip_connection.weight" % index]), format(para["output_blocks.%s.0.skip_connection.bias" % index]))
+        in_layer = network.add_convolution(out(in_layer), ints[1], (1, 1), format(para["decoder.up.%s.block.%s.nin_shortcut.weight" % (index, inner)]), format(para["decoder.up.%s.block.%s.nin_shortcut.bias" % (index, inner)]))
     sample = network.add_elementwise(out(in_layer), out(sample), trt.ElementWiseOperation.SUM)
     return sample
 
