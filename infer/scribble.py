@@ -91,6 +91,14 @@ class Scribble():
         return embeddings # 2 77 768
 
     def control_infer(self, noise, hint, t, context):
+        print(noise)
+        print(noise.shape)
+        print(hint)
+        print(hint.shape)
+        print(context)
+        print(context.shape)
+        print(t)
+        print(t.shape)
         noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
         hint_inp = cuda.DeviceView(ptr=hint.data_ptr(), shape=hint.shape, dtype=np.float32)
         t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
