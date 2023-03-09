@@ -9,6 +9,7 @@ from polygraphy.backend.trt import util as trt_util
 from polygraphy import cuda
 import tensorrt as trt
 import torch
+import random
 
 TRT_LOGGER = trt.Logger(trt.Logger.VERBOSE)
 
@@ -104,3 +105,10 @@ def resize_image(input_image, resolution):
     W = int(np.round(W / 64.0)) * 64
     img = cv2.resize(input_image, (W, H), interpolation=cv2.INTER_LANCZOS4 if k > 1 else cv2.INTER_AREA)
     return img
+
+
+def seed_everything(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
