@@ -358,7 +358,7 @@ def vae_mid_attn(network, para, in_layer, index, ints):
     qk = network.add_softmax(out(qk)) # 1 4096 4096
     qk = network.add_shuffle(out(qk))
     qk.first_transpose = (0, 2, 1)
-    v = network.add_matrix_multiply(out(v), trt.MatrixOperation.NONE, out(v), trt.MatrixOperation.NONE) # 1 512 4096
+    v = network.add_matrix_multiply(out(v), trt.MatrixOperation.NONE, out(qk), trt.MatrixOperation.NONE) # 1 512 4096
     v = network.add_shuffle(out(v))
     v.reshape_dims = (1, 512, 64, 64)
     sample = network.add_convolution(out(v), ints[1], (1, 1), format(para["decoder.mid.attn_1.proj_out.weight"]), format(para["decoder.mid.attn_1.proj_out.bias"])) # 1 512 64 64
