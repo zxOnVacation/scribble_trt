@@ -159,6 +159,7 @@ if __name__ == '__main__':
     img = entry.infer(prompts="hot air balloon, best quality, extremely detailed, sunset, beach",
                       neg_prompts="longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
                       control="../src/test_imgs/user_3.png",)
-
-    img = Image.fromarray(img.detach().cpu().numpy())
+    img = img.detach().cpu().numpy()
+    print(img)
+    img = Image.fromarray(img)
     img.save("out.jpg")
