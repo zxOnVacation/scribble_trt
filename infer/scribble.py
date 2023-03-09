@@ -141,7 +141,7 @@ class Scribble():
                 latent_model_input = torch.cat([latents] * 2)
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, step_index)
                 print(timestep)
-                timestep_input = torch.cat([timestep.float()] * 2)
+                timestep_input = torch.tensor([timestep.float(), timestep.float()])
                 control_input = torch.cat([control] * 2)
                 control_outs = self.control_infer(latent_model_input, control_input, timestep_input, embeddings)
                 eps = self.unet_infer(latent_model_input, timestep_input, embeddings, control_outs)
