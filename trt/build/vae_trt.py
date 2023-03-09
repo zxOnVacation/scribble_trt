@@ -55,6 +55,16 @@ def build_network(network, para, sample):
         sample = gn(network, sample, para['decoder.norm_out.weight'], para['decoder.norm_out.bias'], epsilon=1e-6, bSwish=1)
         sample = network.add_convolution(out(sample), 3, (3, 3), format(para["decoder.conv_out.weight"]), format(para["decoder.conv_out.bias"]))
         sample.padding = (1, 1)
+    if 9: # 后处理
+        sample = network.add_shuffle(out(sample))
+        sample.first_transpose = (0, 2, 3, 1)
+        sample.reshape_dims = (512, 512, 3)
+        img_scale = network.add_constant((1, 1, 1), format(np.array([0.5 * 255.0], dtype=np.float32)))
+        sample = network.add_elementwise(out(sample), out(img_scale), trt.ElementWiseOperation.PROD)
+        sample = network.add_elementwise(out(sample), out(img_scale), trt.ElementWiseOperation.SUM)
+        sample = network.add_activation(out(sample), trt.ActivationType.CLIP)
+        sample.alpha = 0.0
+        sample.beta = 255.0
 
     out(sample).name = 'decode_img'
     network.mark_output(out(sample))
