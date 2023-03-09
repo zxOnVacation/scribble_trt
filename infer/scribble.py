@@ -7,7 +7,7 @@ from PIL import Image
 import einops
 import random
 import tensorrt as trt
-from diffusers import UniPCMultistepScheduler
+from diffusers import DDIMScheduler
 
 
 class Scribble():
@@ -15,7 +15,7 @@ class Scribble():
         self.engine_dir = engine_dir
         self.stream = cuda.Stream()
         self.load_engines()
-        self.scheduler = UniPCMultistepScheduler()
+        self.scheduler = DDIMScheduler()
         self.device = 'cuda'
         self.dtype = torch.float32
 
@@ -159,7 +159,8 @@ if __name__ == '__main__':
     entry = Scribble("../trt/build/engine")
     img = entry.infer(prompts="hot air balloon, best quality, extremely detailed, sunset, beach",
                       neg_prompts="longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
-                      control="../src/test_imgs/user_3.png",)
+                      control="../src/test_imgs/user_3.png",
+                      steps=50)
     img = img.detach().cpu().numpy().astype(np.uint8)
     print(img)
     img = Image.fromarray(img)
