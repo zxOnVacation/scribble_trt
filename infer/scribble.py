@@ -91,22 +91,11 @@ class Scribble():
         return embeddings # 2 77 768
 
     def control_infer(self, noise, hint, t, context):
-        print(noise)
-        print(noise.shape)
-        print(hint)
-        print(hint.shape)
-        print(context)
-        print(context.shape)
-        print(t)
-        print(t.shape)
-        time.sleep(60000)
         noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
         hint_inp = cuda.DeviceView(ptr=hint.data_ptr(), shape=hint.shape, dtype=np.float32)
         t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
         context_inp = cuda.DeviceView(ptr=context.data_ptr(), shape=context.shape, dtype=np.float32)
         control_out = self.control.infer({'noise': noise_inp, 'hint': hint_inp, 't': t_inp, 'context': context_inp}, self.stream)
-        print(control_out['mbrs_0'])
-        print(control_out['mbrs_0'].shape)
         return control_out
 
     def unet_infer(self, noise, t, context, c):
@@ -153,12 +142,9 @@ class Scribble():
             for step_index, timestep in enumerate(self.scheduler.timesteps):
                 latent_model_input = torch.cat([latents] * 2)
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, step_index)
-                timestep_input = torch.tensor([timestep.float(), timestep.float()])
+                timestep_input = torch.tensor([timestep.float(), timestep.float()]).to(self.device)
                 control_input = torch.cat([control] * 2)
                 control_outs = self.control_infer(latent_model_input, control_input, timestep_input, embeddings)
-                print(control_outs['mbrs_0'])
-                print(control_outs['mbrs_0'].shape)
-                time.sleep(6000)
                 eps = self.unet_infer(latent_model_input, timestep_input, embeddings, control_outs)
                 noise_pred_uncond, noise_pred_text = eps.chunk(2)
                 noise_pred = noise_pred_uncond + scale * (noise_pred_text - noise_pred_uncond)
