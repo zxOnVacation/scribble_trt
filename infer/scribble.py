@@ -139,7 +139,6 @@ class Scribble():
             latents = torch.randn([1, 4, 64, 64], device=self.device, dtype=self.dtype, generator=generator)
             latents = latents * self.scheduler.init_noise_sigma
             torch.cuda.synchronize()
-            print(embeddings)
             for step_index, timestep in enumerate(self.scheduler.timesteps):
                 latent_model_input = torch.cat([latents] * 2)
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, step_index)
@@ -147,13 +146,12 @@ class Scribble():
                 control_input = torch.cat([control] * 2)
                 input_data = np.load('../trt/build/weights/control_input.npz')
                 noise = torch.from_numpy(np.repeat(input_data['noise'], 2, axis=0)).float().cuda()  # 2 4 64 64
-                print(noise)
                 latent_model_input = noise
                 timestep_input = torch.tensor([981., 981]).to(self.device).float()
                 control_outs = self.control_infer(latent_model_input, control_input, timestep_input, embeddings)
-                print(control_outs['mbrs_0'])
-                time.sleep(6000)
                 eps = self.unet_infer(latent_model_input, timestep_input, embeddings, control_outs)
+                print(eps)
+                time.sleep(6000)
                 noise_pred_uncond, noise_pred_text = eps.chunk(2)
                 noise_pred = noise_pred_uncond + scale * (noise_pred_text - noise_pred_uncond)
                 latents = self.scheduler.step(noise_pred, timestep, latents, return_dict=False)[0]
