@@ -135,7 +135,7 @@ class Scribble():
         generator = torch.Generator(device="cuda").manual_seed(seed)
         self.scheduler.set_timesteps(steps)
         with torch.inference_mode(), torch.autocast("cuda"), trt.Runtime(TRT_LOGGER) as runtime:
-            embeddings = self.clip_infer(neg_prompts, prompts)
+            embeddings = self.clip_infer(prompts, neg_prompts)
             print(embeddings)
             latents = torch.randn([1, 4, 64, 64], device=self.device, dtype=self.dtype, generator=generator)
             latents = latents * self.scheduler.init_noise_sigma
@@ -145,16 +145,16 @@ class Scribble():
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, step_index)
                 timestep_input = torch.tensor([timestep.float(), timestep.float()]).to(self.device)
                 control_input = torch.cat([control] * 2)
-                input_data = np.load('../trt/build/weights/control_input.npz')
-                noise = torch.from_numpy(np.repeat(input_data['noise'], 2, axis=0)).float().cuda()  # 2 4 64 64
-                print(noise)
-                latent_model_input = noise
+                # input_data = np.load('../trt/build/weights/control_input.npz')
+                # noise = torch.from_numpy(np.repeat(input_data['noise'], 2, axis=0)).float().cuda()  # 2 4 64 64
+                # print(noise)
+                # latent_model_input = noise
                 control_outs = self.control_infer(latent_model_input, control_input, timestep_input, embeddings)
                 print(control_outs['mbrs_0'])
                 eps = self.unet_infer(latent_model_input, timestep_input, embeddings, control_outs)
                 noise_pred_uncond, noise_pred_text = eps.chunk(2)
                 noise_pred = noise_pred_uncond + scale * (noise_pred_text - noise_pred_uncond)
-                latents = self.scheduler.step(noise_pred, timestep, latents, return_dict=False)[1]
+                latents = self.scheduler.step(noise_pred, timestep, latents, return_dict=False)[0]
 
             image = self.vae_infer(latents)
         return image
