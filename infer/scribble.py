@@ -7,7 +7,7 @@ from PIL import Image
 import einops
 import random
 import tensorrt as trt
-from diffusers import DDIMScheduler
+from diffusers import DDIMScheduler, UniPCMultistepScheduler
 
 
 class Scribble():
@@ -15,7 +15,7 @@ class Scribble():
         self.engine_dir = engine_dir
         self.stream = cuda.Stream()
         self.load_engines()
-        self.scheduler = DDIMScheduler()
+        self.scheduler = UniPCMultistepScheduler.from_config('./scheduler_config.json')
         self.device = 'cuda'
         self.dtype = torch.float32
 
