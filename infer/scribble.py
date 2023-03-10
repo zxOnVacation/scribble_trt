@@ -19,6 +19,7 @@ class Scribble():
         # self.scheduler = DPMSolverMultistepScheduler.from_config('./config')
         self.device = 'cuda'
         self.dtype = torch.float32
+        self.tokenizer = tokenize()
 
     def load_engines(self):
         # 预先加载各模型
@@ -85,10 +86,10 @@ class Scribble():
 
     def clip_infer(self, text_p, text_n):
         start = time.time()
-        tokens_p = tokenize(text_p)
+        tokens_p = self.tokenizer(text_p, truncation=True, max_length=77, return_length=True, return_overflowing_tokens=False, padding="max_length", return_tensors="pt")["input_ids"].to("cuda")
         print('tokenizer_a cost %s ms' % ((time.time() - start) * 1000))
         start = time.time()
-        tokens_n = tokenize(text_n)
+        tokens_n = self.tokenizer(text_n, truncation=True, max_length=77, return_length=True, return_overflowing_tokens=False, padding="max_length", return_tensors="pt")["input_ids"].to("cuda")
         print('tokenizer_b cost %s ms' % ((time.time() - start) * 1000))
         tokens = torch.cat([tokens_p, tokens_n]).int()
         start = time.time()

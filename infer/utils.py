@@ -69,10 +69,9 @@ class Engine():
         return self.tensors
 
 
-def tokenize(text):
+def tokenize():
     tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
-    tokens = tokenizer(text, truncation=True, max_length=77, return_length=True, return_overflowing_tokens=False, padding="max_length", return_tensors="pt")["input_ids"].to("cuda")
-    return tokens
+    return tokenizer
 
 
 def HWC3(x):
