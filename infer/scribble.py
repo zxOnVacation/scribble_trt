@@ -134,7 +134,6 @@ class Scribble():
         seed_everything(seed)
         generator = torch.Generator(device="cuda").manual_seed(seed)
         self.scheduler.set_timesteps(steps)
-        print(self.scheduler.timesteps)
         with torch.inference_mode(), torch.autocast("cuda"), trt.Runtime(TRT_LOGGER) as runtime:
             embeddings = self.clip_infer(prompts, neg_prompts)
             latents = torch.randn([1, 4, 64, 64], device=self.device, dtype=self.dtype, generator=generator)
@@ -150,8 +149,7 @@ class Scribble():
                 noise = torch.from_numpy(np.repeat(input_data['noise'], 2, axis=0)).float().cuda()  # 2 4 64 64
                 print(noise)
                 latent_model_input = noise
-                print(control_input)
-                print(timestep_input)
+                timestep_input = torch.tensor([981., 981]).to(self.device).float()
                 control_outs = self.control_infer(latent_model_input, control_input, timestep_input, embeddings)
                 print(control_outs['mbrs_0'])
                 time.sleep(6000)
