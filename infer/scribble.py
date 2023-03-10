@@ -140,15 +140,10 @@ class Scribble():
             latents = latents * self.scheduler.init_noise_sigma
             torch.cuda.synchronize()
             for step_index, timestep in enumerate(self.scheduler.timesteps):
-                print(timestep)
                 latent_model_input = torch.cat([latents] * 2)
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, step_index)
                 timestep_input = torch.tensor([timestep.float(), timestep.float()]).to(self.device).float()
                 control_input = torch.cat([control] * 2)
-                # input_data = np.load('../trt/build/weights/control_input.npz')
-                # noise = torch.from_numpy(np.repeat(input_data['noise'], 2, axis=0)).float().cuda()  # 2 4 64 64
-                # latent_model_input = noise
-                # timestep_input = torch.tensor([981., 981]).to(self.device).float()
                 control_outs = self.control_infer(latent_model_input, control_input, timestep_input, embeddings)
                 eps = self.unet_infer(latent_model_input, timestep_input, embeddings, control_outs)
                 noise_pred_text, noise_pred_uncond = eps.chunk(2)
@@ -161,11 +156,15 @@ class Scribble():
 
 if __name__ == '__main__':
     entry = Scribble("../trt/build/engine")
-    img = entry.infer(prompts="hot air balloon, best quality, extremely detailed, sunset, beach",
-                      neg_prompts="longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
-                      control="../src/test_imgs/user_3.png",
-                      steps=50)
-    img = img.detach().cpu().numpy().astype(np.uint8)
-    print(img)
-    img = Image.fromarray(img)
-    img.save("out.jpg")
+
+    for i in range(30):
+        t = time.time()
+        img = entry.infer(prompts="hot air balloon, best quality, extremely detailed, sunset, beach",
+                          neg_prompts="longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
+                          control="../src/test_imgs/user_3.png",
+                          steps=20)
+        print('cost %s s' % ((time.time() - t) * 1000))
+        img = img.detach().cpu().numpy().astype(np.uint8)
+        img = Image.fromarray(img)
+        img.save("out_%s.jpg" % i)
+
