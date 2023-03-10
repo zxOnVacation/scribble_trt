@@ -150,10 +150,10 @@ class Scribble():
                 timestep_input = torch.tensor([981., 981]).to(self.device).float()
                 control_outs = self.control_infer(latent_model_input, control_input, timestep_input, embeddings)
                 eps = self.unet_infer(latent_model_input, timestep_input, embeddings, control_outs)
-                print(eps)
-                time.sleep(6000)
-                noise_pred_uncond, noise_pred_text = eps.chunk(2)
+                noise_pred_text, noise_pred_uncond = eps.chunk(2)
                 noise_pred = noise_pred_uncond + scale * (noise_pred_text - noise_pred_uncond)
+                print(noise_pred)
+                time.sleep(600)
                 latents = self.scheduler.step(noise_pred, timestep, latents, return_dict=False)[0]
 
             image = self.vae_infer(latents)
