@@ -15,7 +15,7 @@ class Scribble():
         self.engine_dir = engine_dir
         self.stream = cuda.Stream()
         self.load_engines()
-        self.scheduler = UniPCMultistepScheduler.from_config('./scheduler_config.json')
+        self.scheduler = UniPCMultistepScheduler.from_config('./config')
         self.device = 'cuda'
         self.dtype = torch.float32
 
