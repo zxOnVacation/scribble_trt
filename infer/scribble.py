@@ -92,16 +92,18 @@ class Scribble():
         return embeddings # 2 77 768
 
     def control_infer(self, noise, hint, t, context):
+        ts = time.time()
         noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
         hint_inp = cuda.DeviceView(ptr=hint.data_ptr(), shape=hint.shape, dtype=np.float32)
         t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
         context_inp = cuda.DeviceView(ptr=context.data_ptr(), shape=context.shape, dtype=np.float32)
-        t = time.time()
+
         control_out = self.control.infer({'noise': noise_inp, 'hint': hint_inp, 't': t_inp, 'context': context_inp}, self.stream)
-        print('control cost %s s' % ((time.time() - t) * 1000))
+        print('control cost %s ms' % ((time.time() - ts) * 1000))
         return control_out
 
     def unet_infer(self, noise, t, context, c):
+        ts = time.time()
         noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
         t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
         context_inp = cuda.DeviceView(ptr=context.data_ptr(), shape=context.shape, dtype=np.float32)
@@ -118,13 +120,12 @@ class Scribble():
         dbrs10_inp = cuda.DeviceView(ptr=c['dbrs_10'].data_ptr(), shape=(2, 1280, 8, 8), dtype=np.float32)
         dbrs11_inp = cuda.DeviceView(ptr=c['dbrs_11'].data_ptr(), shape=(2, 1280, 8, 8), dtype=np.float32)
         mbrs0_inp = cuda.DeviceView(ptr=c['mbrs_0'].data_ptr(), shape=(2, 1280, 8, 8), dtype=np.float32)
-        t = time.time()
         eps = self.unet.infer({'u_noise': noise_inp, 'u_t': t_inp, 'u_context': context_inp, 'u_dbrs_0': dbrs0_inp,
                                'u_dbrs_1': dbrs1_inp,'u_dbrs_2': dbrs2_inp, 'u_dbrs_3': dbrs3_inp,
                                'u_dbrs_4': dbrs4_inp, 'u_dbrs_5': dbrs5_inp,'u_dbrs_6': dbrs6_inp,
                                'u_dbrs_7': dbrs7_inp, 'u_dbrs_8': dbrs8_inp, 'u_dbrs_9': dbrs9_inp,
                                'u_dbrs_10': dbrs10_inp, 'u_dbrs_11': dbrs11_inp, 'u_mbrs_0': mbrs0_inp}, self.stream)['eps']
-        print('unet cost %s s' % ((time.time() - t) * 1000))
+        print('unet cost %s ms' % ((time.time() - ts) * 1000))
         return eps
 
     def vae_infer(self, latent):
@@ -168,7 +169,7 @@ if __name__ == '__main__':
                           neg_prompts="longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
                           control="../src/test_imgs/user_3.png",
                           steps=20)
-        print('cost %s s' % ((time.time() - t) * 1000))
+        print('cost %s ms' % ((time.time() - t) * 1000))
         img = img.detach().cpu().numpy().astype(np.uint8)
         img = Image.fromarray(img)
         img.save("out_%s.jpg" % i)
