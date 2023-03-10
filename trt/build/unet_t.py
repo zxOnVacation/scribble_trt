@@ -130,62 +130,62 @@ def build_network(network, parau, parac, noise, t, context, hint):
         noise_inc = network.add_convolution(out(noise_inc), 1280, (1, 1), format(parac['middle_block_out.0.weight']), format(parac['middle_block_out.0.bias']))
         noise_in = network.add_elementwise(out(noise_in), out(noise_inc), trt.ElementWiseOperation.SUM) # 2 1280 8 8
     if 16: # up-0
-        c_in = network.add_elementwise(out(in_11), inc_11, trt.ElementWiseOperation.SUM)
+        c_in = network.add_elementwise(out(in_11), out(inc_11), trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)]) # 2 2560 8 8
         noise_in = build_out_0(network, parau, noise_in, 0, [2560, 1280], tembu, skip=True)
     if 17: # up-1
-        c_in = network.add_elementwise(out(in_10), inc_10, trt.ElementWiseOperation.SUM)
+        c_in = network.add_elementwise(out(in_10), out(inc_10), trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)])
         noise_in = build_out_0(network, parau, noise_in, 1, [2560, 1280], tembu, skip=True)
     if 18: # up-2
-        c_in = network.add_elementwise(out(in_9), inc_9, trt.ElementWiseOperation.SUM)
+        c_in = network.add_elementwise(out(in_9), out(inc_9), trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)])
         noise_in = build_out_0(network, parau, noise_in, 2, [2560, 1280], tembu, skip=True)
         noise_in = up_trt(network, parau, 2, noise_in, [1280])
     if 19: # up-3
-        c_in = network.add_elementwise(out(in_8), inc_8, trt.ElementWiseOperation.SUM)
+        c_in = network.add_elementwise(out(in_8), out(inc_8), trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)]) # 1 2560 16 16
         noise_in = build_out_0(network, parau, noise_in, 3, [2560, 1280], tembu, skip=True)
         noise_in = build_out_1(network, parau, noise_in, 3, [1280, 1280], context, 16)
     if 20: # up-4
-        c_in = network.add_elementwise(out(in_7), inc_7, trt.ElementWiseOperation.SUM)
+        c_in = network.add_elementwise(out(in_7), out(inc_7), trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)]) # 1 2560 16 16
         noise_in = build_out_0(network, parau, noise_in, 4, [2560, 1280], tembu, skip=True)
         noise_in = build_out_1(network, parau, noise_in, 4, [1280, 1280], context, 16)
     if 21: # up-5
-        c_in = network.add_elementwise(out(in_6), inc_6, trt.ElementWiseOperation.SUM)
+        c_in = network.add_elementwise(out(in_6), out(inc_6), trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)]) # 1 2560 16 16
         noise_in = build_out_0(network, parau, noise_in, 5, [1920, 1280], tembu, skip=True)
         noise_in = build_out_1(network, parau, noise_in, 5, [1280, 1280], context, 16)
         noise_in = up_trt(network, parau, 5, noise_in, [1280])
     if 22: # up-6
-        c_in = network.add_elementwise(out(in_5), inc_5, trt.ElementWiseOperation.SUM)
+        c_in = network.add_elementwise(out(in_5), out(inc_5), trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)])
         noise_in = build_out_0(network, parau, noise_in, 6, [1920, 640], tembu, skip=True)
         noise_in = build_out_1(network, parau, noise_in, 6, [640, 640], context, 32)
     if 23: # up-7
-        c_in = network.add_elementwise(out(in_4), inc_4, trt.ElementWiseOperation.SUM)
+        c_in = network.add_elementwise(out(in_4), out(inc_4), trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)])
         noise_in = build_out_0(network, parau, noise_in, 7, [1280, 640], tembu, skip=True)
         noise_in = build_out_1(network, parau, noise_in, 7, [640, 640], context, 32)
     if 24: # up-8
-        c_in = network.add_elementwise(out(in_3), inc_3, trt.ElementWiseOperation.SUM)
+        c_in = network.add_elementwise(out(in_3), out(inc_3), trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)]) # 1 2560 16 16
         noise_in = build_out_0(network, parau, noise_in, 8, [960, 640], tembu, skip=True)
         noise_in = build_out_1(network, parau, noise_in, 8, [640, 640], context, 32)
         noise_in = up_trt(network, parau, 8, noise_in, [640])
     if 25: # up-9
-        c_in = network.add_elementwise(out(in_2), inc_2, trt.ElementWiseOperation.SUM)
+        c_in = network.add_elementwise(out(in_2), out(inc_2), trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)]) # 1 2560 16 16
         noise_in = build_out_0(network, parau, noise_in, 9, [960, 320], tembu, skip=True)
         noise_in = build_out_1(network, parau, noise_in, 9, [320, 320], context, 64)
     if 26: # up-10
-        c_in = network.add_elementwise(out(in_1), inc_1, trt.ElementWiseOperation.SUM)
+        c_in = network.add_elementwise(out(in_1), out(inc_1), trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)]) # 1 2560 16 16
         noise_in = build_out_0(network, parau, noise_in, 10, [640, 320], tembu, skip=True)
         noise_in = build_out_1(network, parau, noise_in, 10, [320, 320], context, 64)
     if 27: # up-11
-        c_in = network.add_elementwise(out(in_0), inc_0, trt.ElementWiseOperation.SUM)
+        c_in = network.add_elementwise(out(in_0), out(inc_0), trt.ElementWiseOperation.SUM)
         noise_in = network.add_concatenation([out(noise_in), out(c_in)]) # 1 2560 16 16
         noise_in = build_out_0(network, parau, noise_in, 11, [640, 320], tembu, skip=True)
         noise_in = build_out_1(network, parau, noise_in, 11, [320, 320], context, 64)
