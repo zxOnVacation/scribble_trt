@@ -134,6 +134,7 @@ class Scribble():
         seed_everything(seed)
         generator = torch.Generator(device="cuda").manual_seed(seed)
         self.scheduler.set_timesteps(steps)
+        print(self.scheduler.timesteps)
         with torch.inference_mode(), torch.autocast("cuda"), trt.Runtime(TRT_LOGGER) as runtime:
             embeddings = self.clip_infer(prompts, neg_prompts)
             latents = torch.randn([1, 4, 64, 64], device=self.device, dtype=self.dtype, generator=generator)
