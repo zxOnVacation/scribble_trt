@@ -10,6 +10,10 @@ from polygraphy import cuda
 import tensorrt as trt
 import torch
 import random
+import re
+import base64
+from PIL import Image
+from io import BytesIO
 
 TRT_LOGGER = trt.Logger(trt.Logger.VERBOSE)
 
@@ -70,7 +74,7 @@ class Engine():
 
 
 def tokenize():
-    tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
+    tokenizer = CLIPTokenizer.from_pretrained("./config/tokenizer")
     return tokenizer
 
 
@@ -111,3 +115,19 @@ def seed_everything(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+
+
+def b642img(b64_str):
+    b64_data = re.sub('^data:image/.+;base64,', '', b64_str)
+    byte_data = base64.b64decode(b64_data)
+    b64_img = np.array(Image.open(BytesIO(byte_data)))
+    return b64_img
+
+
+def img2b64(img_arr):
+    img = Image.fromarray(img_arr)
+    buffer = BytesIO()
+    img.save(buffer, format="JPEG")
+    byte_data = buffer.getvalue()
+    b64_str = base64.b64encode(byte_data)
+    return b64_str
