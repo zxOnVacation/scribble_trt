@@ -84,11 +84,17 @@ class Scribble():
         return control
 
     def clip_infer(self, text_p, text_n):
+        start = time.time()
         tokens_p = tokenize(text_p)
+        print('tokenizer_a cost %s ms' % ((time.time() - start) * 1000))
+        start = time.time()
         tokens_n = tokenize(text_n)
+        print('tokenizer_b cost %s ms' % ((time.time() - start) * 1000))
         tokens = torch.cat([tokens_p, tokens_n]).int()
+        start = time.time()
         tokens_inp = cuda.DeviceView(ptr=tokens.data_ptr(), shape=tokens.shape, dtype=np.int32)
         embeddings = self.clip.infer({"tokens": tokens_inp}, self.stream)['embeddings']
+        print('tokenizer infer cost %s ms' % ((time.time() - start) * 1000))
         return embeddings # 2 77 768
 
     def control_infer(self, noise, hint, t, context):
