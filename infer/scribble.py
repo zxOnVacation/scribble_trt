@@ -92,18 +92,15 @@ class Scribble():
         return embeddings # 2 77 768
 
     def control_infer(self, noise, hint, t, context):
-        ts = time.time()
         noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
         hint_inp = cuda.DeviceView(ptr=hint.data_ptr(), shape=hint.shape, dtype=np.float32)
         t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
         context_inp = cuda.DeviceView(ptr=context.data_ptr(), shape=context.shape, dtype=np.float32)
 
         control_out = self.control.infer({'noise': noise_inp, 'hint': hint_inp, 't': t_inp, 'context': context_inp}, self.stream)
-        print('control cost %s ms' % ((time.time() - ts) * 1000))
         return control_out
 
     def unet_infer(self, noise, t, context, c):
-        ts = time.time()
         noise_inp = cuda.DeviceView(ptr=noise.data_ptr(), shape=noise.shape, dtype=np.float32)
         t_inp = cuda.DeviceView(ptr=t.data_ptr(), shape=t.shape, dtype=np.float32)
         context_inp = cuda.DeviceView(ptr=context.data_ptr(), shape=context.shape, dtype=np.float32)
@@ -125,7 +122,6 @@ class Scribble():
                                'u_dbrs_4': dbrs4_inp, 'u_dbrs_5': dbrs5_inp,'u_dbrs_6': dbrs6_inp,
                                'u_dbrs_7': dbrs7_inp, 'u_dbrs_8': dbrs8_inp, 'u_dbrs_9': dbrs9_inp,
                                'u_dbrs_10': dbrs10_inp, 'u_dbrs_11': dbrs11_inp, 'u_mbrs_0': mbrs0_inp}, self.stream)['eps']
-        print('unet cost %s ms' % ((time.time() - ts) * 1000))
         return eps
 
     def vae_infer(self, latent):
@@ -139,24 +135,35 @@ class Scribble():
             seed = random.randint(0, 65535)
         seed_everything(seed)
         generator = torch.Generator(device="cuda").manual_seed(seed)
+        start = time.time()
         self.scheduler.set_timesteps(steps)
+        print('set timestamps cost %s ms' % ((time.time() - start) * 1000))
         with torch.inference_mode(), torch.autocast("cuda"), trt.Runtime(TRT_LOGGER) as runtime:
+            start = time.time()
             embeddings = self.clip_infer(prompts, neg_prompts)
+            print('clip infer cost %s ms' % ((time.time() - start) * 1000))
             latents = torch.randn([1, 4, 64, 64], device=self.device, dtype=self.dtype, generator=generator)
             latents = latents * self.scheduler.init_noise_sigma
-            torch.cuda.synchronize()
             for step_index, timestep in enumerate(self.scheduler.timesteps):
+                start = time.time()
                 latent_model_input = torch.cat([latents] * 2)
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, step_index)
                 timestep_input = torch.tensor([timestep.float(), timestep.float()]).to(self.device).float()
                 control_input = torch.cat([control] * 2)
                 control_outs = self.control_infer(latent_model_input, control_input, timestep_input, embeddings)
+                print('control cost %s ms' % ((time.time() - start) * 1000))
+                start = time.time()
                 eps = self.unet_infer(latent_model_input, timestep_input, embeddings, control_outs)
+                print('unet cost %s ms' % ((time.time() - start) * 1000))
+                start = time.time()
                 noise_pred_text, noise_pred_uncond = eps.chunk(2)
                 noise_pred = noise_pred_uncond + scale * (noise_pred_text - noise_pred_uncond)
                 latents = self.scheduler.step(noise_pred, timestep, latents, return_dict=False)[0]
+                print('step cost %s ms' % ((time.time() - start) * 1000))
 
+            start = time.time()
             image = self.vae_infer(latents)
+            print('vae cost %s ms' % ((time.time() - start) * 1000))
         return image
 
 
