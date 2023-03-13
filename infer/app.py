@@ -25,8 +25,8 @@ def infer():
         prompts = request_body['prompts']
         neg_prompts = request_body['neg_prompts']
         steps = request_body.get('steps', 20)
-        scale = request_body('scale', 7.5)
-        seed = request_body('seed', None)
+        scale = request_body.get('scale', 7.5)
+        seed = request_body.get('seed', None)
     except:
         raise "please check input params!"
     img_b64 = entry.infer(prompts=prompts,
