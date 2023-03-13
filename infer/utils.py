@@ -129,5 +129,5 @@ def img2b64(img_arr):
     buffer = BytesIO()
     img.save(buffer, format="JPEG")
     byte_data = buffer.getvalue()
-    b64_str = base64.b64encode(byte_data)
+    b64_str = base64.b64encode(byte_data).decode('UTF-8')
     return b64_str

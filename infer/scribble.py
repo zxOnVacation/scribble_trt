@@ -151,7 +151,6 @@ class Scribble():
                 noise_pred_text, noise_pred_uncond = eps.chunk(2)
                 noise_pred = noise_pred_uncond + scale * (noise_pred_text - noise_pred_uncond)
                 latents = self.scheduler.step(noise_pred, timestep, latents, return_dict=False)[0]
-                print('step cost %s ms' % ((time.time() - start) * 1000))
 
             image = self.vae_infer(latents)
             image = image.detach().cpu().numpy().astype(np.uint8)
