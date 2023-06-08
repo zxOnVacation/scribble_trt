@@ -1,13 +1,8 @@
 import ctypes
 import torch as t
-import torch
-import torch.nn as nn
-from transformers import CLIPTokenizer, CLIPModel
 import numpy as np
 import tensorrt as trt
 from cuda import cudart
-import time
-import math
 logger = trt.Logger(trt.Logger.VERBOSE)
 np.random.seed(1532578949)
 t.manual_seed(1532578949)
@@ -73,7 +68,7 @@ def build_network(network, para, sample):
 
 def vae_trt():
     import os
-    paraFile = './weights/vae.npz'
+    paraFile = './vae.npz'
     bUseFP16Mode = True
     bUseTimeCache = True
     timeCacheFile = './vae.cache'
@@ -109,7 +104,7 @@ def vae_trt():
     if engineString == None:
         print("Failed building engine!")
         return
-    with open('./engine/vae.plan', "wb") as f:  # 将序列化网络保存为 .plan 文件
+    with open('./decoder.plan', "wb") as f:  # 将序列化网络保存为 .plan 文件
         f.write(engineString)
         print("Succeeded saving .plan file!")
 

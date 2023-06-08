@@ -1,8 +1,6 @@
 import ctypes
 import torch as t
 import torch
-import torch.nn as nn
-from transformers import CLIPTokenizer, CLIPModel
 import numpy as np
 import tensorrt as trt
 from cuda import cudart
